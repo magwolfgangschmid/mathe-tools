@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brüche und Dezimalzahlen umrechnen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+:root{--bg:#f4f7f9;--card:#ffffff;--text:#10202e;--muted:#445566;--line:#b8c4cf;--acc:#0b5563;--acc-t:#ffffff;--per:#b3470a;--soft:#e3f0f2;--ok-bg:#dff5e6;--ok:#0d4a22;--bad-bg:#fde4e1;--bad:#6e1410;--warn-bg:#fff2cc;--warn:#5c3d00;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0c151d;--card:#121f2a;--text:#eef3f7;--muted:#a9b8c5;--line:#3b4c5b;--acc:#5cc6d6;--acc-t:#06222a;--per:#ffb27a;--soft:#17303a;--ok-bg:#0f3320;--ok:#bdf0cd;--bad-bg:#471713;--bad:#fdd0cb;--warn-bg:#3d3000;--warn:#ffe49a}}
+:root[data-theme="dark"]{--bg:#0c151d;--card:#121f2a;--text:#eef3f7;--muted:#a9b8c5;--line:#3b4c5b;--acc:#5cc6d6;--acc-t:#06222a;--per:#ffb27a;--soft:#17303a;--ok-bg:#0f3320;--ok:#bdf0cd;--bad-bg:#471713;--bad:#fdd0cb;--warn-bg:#3d3000;--warn:#ffe49a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--text);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:1.1rem 1.25rem}
+.muted{color:var(--muted)}
+.btn,.btn2,.seg,.key{min-height:44px;border-radius:.6rem;font-weight:700;padding:.5rem 1rem;cursor:pointer}
+.btn{background:var(--acc);color:var(--acc-t);border:2px solid var(--acc)}
+.btn2,.seg,.key{background:var(--card);color:var(--text);border:2px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.seg[aria-pressed="true"]{background:var(--acc);color:var(--acc-t);border-color:var(--acc)}
+.key{min-width:52px;font-size:1.25rem;padding:.3rem .7rem}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.field{border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:.6rem;padding:.55rem .8rem;min-width:0}
+.per{text-decoration:overline;text-decoration-thickness:.12em;text-underline-offset:0;color:var(--per);font-weight:700}
+.frac{display:inline-flex;flex-direction:column;align-items:center;line-height:1.1}
+.frac span:first-child{border-bottom:.08em solid currentColor;padding:0 .35em .08em}
+.frac span:last-child{padding-top:.08em}
+.pill{background:var(--soft);color:var(--text);border-radius:999px;padding:.15rem .8rem;font-weight:700;font-size:.9rem}
+.msg{border-radius:.7rem;padding:.9rem 1rem}
+.ok{background:var(--ok-bg);color:var(--ok)}.bad{background:var(--bad-bg);color:var(--bad)}.warn{background:var(--warn-bg);color:var(--warn)}
+.rows{font-variant-numeric:tabular-nums;font-size:.95rem;border-left:3px solid var(--line);padding-left:.75rem;margin:.5rem 0}
+.rows div{padding:.05rem .4rem}
+.rows .hl{background:var(--soft);color:var(--text);font-weight:700;border-radius:.3rem}
+.bar{height:.75rem;border-radius:999px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main class="max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
+  <header class="flex items-start justify-between gap-3"><div>
+    <h1 class="text-2xl sm:text-3xl font-bold">Brüche und Dezimalzahlen umrechnen</h1>
+    <p class="muted">Üben mit sofortigem Feedback und Lösungsweg – direkt im Browser.</p>
+  </div>
+    <button id="theme" class="btn2" type="button" style="white-space:nowrap" aria-label="Zwischen hellem und dunklem Modus wechseln"></button>
+  </header>
+
+  <section class="card" aria-label="Einstellungen">
+    <p class="font-bold mb-2">Richtung</p>
+    <div id="dirs" class="grid grid-cols-3 gap-2 mb-4 text-sm">
+      <button class="seg" data-dir="A">Bruch → Dezimal</button>
+      <button class="seg" data-dir="B">Dezimal → Bruch</button>
+      <button class="seg" data-dir="M">Gemischt</button>
+    </div>
+    <p class="font-bold mb-2">Kategorie</p>
+    <div id="modes" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <button class="seg" data-mode="ad">Adaptive Challenge</button>
+      <button class="seg" data-mode="fin">Endlich</button>
+      <button class="seg" data-mode="pure">Rein periodisch</button>
+      <button class="seg" data-mode="mixed">Gemischt periodisch</button>
+    </div>
+    <div id="lvls" class="mt-3" hidden>
+      <p class="font-bold mb-2">Schwierigkeit</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button class="seg" data-lv="1">Stufe 1 · einfach</button>
+        <button class="seg" data-lv="2">Stufe 2 · mittel</button>
+        <button class="seg" data-lv="3">Stufe 3 · schwer</button>
+      </div>
+    </div>
+    <p id="modeHelp" class="muted text-sm mt-3"></p>
+  </section>
+
+  <section class="card" aria-label="Aufgabe">
+    <div class="flex items-center justify-between gap-2">
+      <span id="badge" class="pill"></span>
+      <span id="count" class="muted text-sm"></span>
+    </div>
+    <p id="prompt" class="muted mt-3">Wandle den Bruch in eine Dezimalzahl um:</p>
+    <div id="task" class="flex items-center justify-center gap-4 text-5xl sm:text-6xl font-bold my-5"></div>
+
+    <div id="decIn"><label for="ans" class="font-bold">Deine Antwort</label>
+    <div class="flex gap-2 mt-1">
+      <input id="ans" class="field flex-1 text-2xl" type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="z. B. 0,1(6)">
+      <button id="bComma" class="key" type="button" aria-label="Komma einfügen">,</button>
+      <button id="bPer" class="key" type="button" style="font-size:1rem" aria-label="Periode in Klammern einfügen">Periode ( )</button>
+    </div>
+    <p class="muted text-sm mt-2">Komma oder Punkt sind erlaubt. Die Periode steht in Klammern: 1/3 = 0,(3) und 1/6 = 0,1(6). Markierst du die Periodenziffern und tippst auf „Periode ( )“, werden sie eingeklammert.</p>
+    <p id="prev" class="text-lg mt-2 min-h-[2rem]"></p></div>
+    <div id="fracIn" hidden>
+      <p class="font-bold">Deine Antwort als Bruch</p>
+      <div class="flex flex-col gap-1 mt-2" style="width:9rem">
+        <input id="num" class="field text-2xl text-center" type="text" inputmode="numeric" autocomplete="off" aria-label="Zähler" placeholder="Zähler">
+        <div style="border-top:3px solid var(--text)" aria-hidden="true"></div>
+        <input id="den" class="field text-2xl text-center" type="text" inputmode="numeric" autocomplete="off" aria-label="Nenner" placeholder="Nenner">
+      </div>
+      <label class="flex items-center gap-2 mt-3 cursor-pointer"><input id="strict" type="checkbox" class="w-5 h-5"> Nur vollständig gekürzte Brüche akzeptieren</label>
+      <p class="muted text-sm mt-1">Ohne Häkchen zählt auch ein ungekürzter Bruch (z. B. 6/8), du bekommst aber einen Kürzen-Tipp.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mt-2">
+      <button id="check" class="btn" type="button">Prüfen</button>
+      <button id="next" class="btn" type="button" hidden>Nächste Aufgabe</button>
+      <button id="skip" class="btn2" type="button">Überspringen</button>
+    </div>
+    <div id="fb" class="mt-4" aria-live="polite"></div>
+  </section>
+
+  <section class="card" aria-label="Fortschritt">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <p class="font-bold text-lg">Dein Fortschritt</p>
+      <p id="cheer" class="muted"></p>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3 text-center">
+      <div><div id="sOk" class="text-3xl font-bold">0</div><div class="muted text-sm">richtig gelöst</div></div>
+      <div><div id="sTot" class="text-3xl font-bold">0</div><div class="muted text-sm">Versuche</div></div>
+      <div><div id="sStreak" class="text-3xl font-bold">0</div><div class="muted text-sm">Serie (Bestwert <span id="sBest">0</span>)</div></div>
+      <div><div id="sLv" class="text-3xl font-bold">1</div><div class="muted text-sm">Stufe (adaptiv)</div></div>
+    </div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="5" id="barWrap"><i id="bar" style="width:0%"></i></div>
+    <p id="goal" class="muted text-sm mt-1"></p>
+    <div id="byCat" class="grid sm:grid-cols-3 gap-2 mt-3 text-sm"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const CATS = {fin: "Endliche Dezimalzahl", pure: "Rein periodisch", mixed: "Gemischt periodisch"};
+const HELP = {
+  ad: "Beginnt einfach und passt sich an: nach 3 richtigen Antworten in Folge geht es eine Stufe hoch, nach 2 Fehlern eine Stufe runter.",
+  fin: "Die Dezimalzahl bricht nach höchstens 4 Nachkommastellen ab.",
+  pure: "Die Periode beginnt direkt nach dem Komma und hat höchstens 2 Ziffern (Nenner 3, 9, 11, 33, 99).",
+  mixed: "Vorperiode und Periode haben je höchstens 2 Stellen. Jede Aufgabe lässt sich in höchstens 3 Divisionsschritten lösen."
+};
+// Nenner je Kategorie und Stufe (Brüche werden immer vollständig gekürzt erzeugt)
+const D = {
+  fin: {1: [2, 4, 5, 10], 2: [8, 16, 20, 25, 40, 50], 3: [80, 100, 125, 250, 400, 625]},
+  pure: {1: [3, 9], 2: [11, 33], 3: [33, 99]},
+  mixed: {1: [6, 12, 15], 2: [18, 22, 30, 36, 45], 3: [55, 60, 66, 75, 90, 110]}
+};
+// Regeln: endlich ≤ 4 Nachkommastellen; periodisch: Periode ≤ 2, Vorperiode ≤ 2, zusammen höchstens 3 Ziffernschritte
+const valid = (cat, x) => cat === "fin" ? !x.per && x.pre.length >= 1 && x.pre.length <= 4
+  : cat === "pure" ? !x.pre && x.per.length >= 1 && x.per.length <= 2
+  : x.pre.length >= 1 && x.pre.length <= 2 && x.per.length >= 1 && x.per.length <= 2 && x.pre.length + x.per.length <= 3;
+const S = {dir: "A", mode: "ad", sel: 1, lv: 1, ok: 0, tot: 0, streak: 0, best: 0, run: 0, bad: 0,
+  by: {fin: [0, 0], pure: [0, 0], mixed: [0, 0]}, task: null, done: false, last: ""};
+
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const ex = (d, p) => { let e = 0; while (d % p === 0) { d /= p; e++; } return e; };
+
+// Schriftliche Division mit Restverfolgung
+function expand(n, d) {
+  const ip = Math.floor(n / d);
+  let r = n % d;
+  const seen = {}, dig = [], steps = [{t: `${n} : ${d} = ${ip} Rest ${r}`, r}];
+  while (r && !(r in seen)) {
+    seen[r] = dig.length;
+    const r10 = r * 10, q = Math.floor(r10 / d), nr = r10 % d;
+    dig.push(q);
+    steps.push({t: `${r10} : ${d} = ${q} Rest ${nr}`, r: nr});
+    r = nr;
+  }
+  if (!r) return {ip, pre: dig.join(""), per: "", steps, rep: null};
+  const s = seen[r];
+  return {ip, pre: dig.slice(0, s).join(""), per: dig.slice(s).join(""), steps, rep: r};
+}
+const fmtH = x => x.ip + (x.pre || x.per ? "," : "") + x.pre + (x.per ? `<span class="per">${x.per}</span>` : "");
+const fmtT = x => x.ip + (x.pre || x.per ? "," : "") + x.pre + (x.per ? `(${x.per})` : "");
+const fracH = (n, d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+
+function parse(s) {
+  s = s.trim().replace(/\./g, ",").replace(/\s/g, "");
+  const m = /^(\d*)(?:,(\d*)(?:\((\d+)\))?)?$/.exec(s);
+  if (!m || (!m[1] && !m[2] && !m[3])) return null;
+  return {ip: m[1] || "0", pre: m[2] || "", per: m[3] || ""};
+}
+function equal(p, n, d) {
+  const T = 10n ** BigInt(p.pre.length), A = BigInt(p.ip + p.pre);
+  let num = A, den = T;
+  if (p.per) { const N = 10n ** BigInt(p.per.length) - 1n; num = A * N + BigInt(p.per); den = T * N; }
+  return num * BigInt(d) === BigInt(n) * den;
+}
+
+function gen() {
+  let cat, lv;
+  if (S.mode === "ad") { lv = S.lv; cat = lv < 3 ? pick(["fin", "pure"]) : pick(["mixed", "mixed", "fin", "pure"]); }
+  else { cat = S.mode; lv = S.sel; }
+  let n, d, i = 0;
+  do {
+    d = pick(D[cat][lv]);
+    n = rnd(1, (lv === 3 && cat === "fin" ? 3 * d : d) - 1);
+    i++;
+  } while ((gcd(n, d) !== 1 || `${n}/${d}` === S.last || !valid(cat, expand(n, d))) && i < 200);
+  S.last = `${n}/${d}`;
+  const dir = S.dir === "M" ? pick(["A", "B"]) : S.dir;
+  S.task = {n, d, cat, lv, dir, x: expand(n, d)};
+  S.done = false;
+  $("task").innerHTML = dir === "A" ? fracH(n, d) + "<span>=</span><span class=\"muted\">?</span>" : `<span>${fmtH(S.task.x)}</span><span>=</span>${fracH("?", "?")}`;
+  $("prompt").textContent = dir === "A" ? "Wandle den Bruch in eine Dezimalzahl um:" : "Wandle die Dezimalzahl in einen Bruch um:";
+  $("decIn").hidden = dir === "B"; $("fracIn").hidden = dir === "A";
+  $("badge").textContent = (S.mode === "ad" ? `Adaptive Challenge · Stufe ${lv}` : `${CATS[cat]} · Stufe ${lv}`) + (dir === "A" ? " · Bruch → Dezimal" : " · Dezimal → Bruch");
+  $("count").textContent = `Aufgabe ${S.tot + 1}`;
+  $("ans").value = ""; $("ans").disabled = false; $("num").value = ""; $("den").value = ""; $("num").disabled = false; $("den").disabled = false;
+  $("prev").innerHTML = ""; $("fb").innerHTML = "";
+  $("check").hidden = false; $("skip").hidden = false; $("next").hidden = true;
+  (dir === "A" ? $("ans") : $("num")).focus();
+}
+
+function explain(t) {
+  const {n, d, x} = t;
+  const rows = x.steps.slice(0, 14).map(s => `<div class="${x.rep !== null && s.r === x.rep ? "hl" : ""}">${s.t}</div>`).join("");
+  const table = `<div class="rows">${rows}</div>`;
+  if (t.cat === "fin") {
+    const a = ex(d, 2), b = ex(d, 5), k = Math.max(a, b), f = 10 ** k / d;
+    const parts = [a ? `2<sup>${a}</sup>` : "", b ? `5<sup>${b}</sup>` : ""].filter(Boolean).join(" · ");
+    return `<ol class="list-decimal pl-5 my-1 space-y-1"><li>Der Nenner ${d} = ${parts} besteht nur aus 2 und 5. Erweitere mit ${f} auf den Nenner ${10 ** k}.</li><li>Zähler: ${n}·${f} = ${n * f}, also ${n}/${d} = ${n * f}/${10 ** k}.</li><li>Komma um ${k} Stelle${k > 1 ? "n" : ""} nach links: <b>${fmtT(x)}</b></li></ol>`;
+  }
+  if (t.cat === "pure") {
+    const base = 9 % d === 0 ? 9 : 99, fct = base / d, m = n * fct, pad = String(m).padStart(base === 9 ? 1 : 2, "0");
+    if (m < base) return `<ol class="list-decimal pl-5 my-1 space-y-1"><li>Erweitere ${n}/${d} mit ${fct} auf den Nenner ${base}: ${n}/${d} = ${m}/${base}.</li><li>Es gilt 1/${base} = 0,(${base === 9 ? "1" : "01"}), also ${m}/${base} = 0,(${pad}).</li><li>Periodenstrich setzen: <b>${fmtT(x)}</b></li></ol><p>Probe mit schriftlicher Division:</p>${table}`;
+    return `<ol class="list-decimal pl-5 my-1 space-y-1"><li>Rechne schriftlich ${n} : ${d} (höchstens ${x.per.length} Ziffernschritte).</li><li>Der markierte Rest kehrt wieder.</li><li>Die Ziffern dazwischen sind die Periode: <b>${fmtT(x)}</b></li></ol>${table}`;
+  }
+  const fa = 2 ** ex(d, 2) * 5 ** ex(d, 5), p = x.pre.length;
+  return `<ol class="list-decimal pl-5 my-1 space-y-1"><li>Zerlege ${d} = ${fa}·${d / fa}: Der Faktor ${fa} (aus 2 und 5) ergibt ${p} Stelle${p > 1 ? "n" : ""} Vorperiode, der Faktor ${d / fa} die Periode.</li><li>Dividiere schriftlich ${n} : ${d}, höchstens ${p + x.per.length} Ziffernschritte (siehe Tabelle).</li><li>Der markierte Rest kehrt wieder. Ab dieser Stelle gilt die Periode: <b>${fmtT(x)}</b></li></ol>${table}`;
+}
+
+function solution(t) {
+  const x = t.x;
+  const more = x.per ? ` = ${x.ip},${x.pre}${x.per.repeat(Math.ceil(8 / x.per.length)).slice(0, 8)}…` : "";
+  return `<p class="text-xl"><b>${t.n}/${t.d} = ${fmtH(x)}</b> <span class="text-base">(Schreibweise: ${fmtT(x)}${more})</span></p>`;
+}
+
+function check() {
+  if (S.done) return;
+  if (S.task.dir === "B") return checkB();
+  const p = parse($("ans").value), t = S.task, x = t.x;
+  if (!p) {
+    $("fb").innerHTML = `<div class="msg warn">Diese Eingabe kann ich nicht lesen. Schreibe zum Beispiel 0,25 oder 0,(3) oder 0,1(6). Die Periode steht in Klammern.</div>`;
+    return;
+  }
+  const right = equal(p, t.n, t.d);
+  S.done = true; S.tot++; S.by[t.cat][1]++;
+  let title, note = "";
+  if (right) {
+    S.ok++; S.streak++; S.by[t.cat][0]++; S.best = Math.max(S.best, S.streak);
+    title = "Richtig!";
+    if (p.pre !== x.pre || p.per !== x.per || Number(p.ip) !== x.ip) note = `<p>Dein Wert stimmt. Die kürzeste übliche Schreibweise ist ${fmtT(x)}.</p>`;
+    if (S.mode === "ad") {
+      S.run++; S.bad = 0;
+      if (S.run >= 3 && S.lv < 3) { S.lv++; S.run = 0; note += `<p><b>Stufe ${S.lv} erreicht!</b> Ab jetzt wird es etwas schwerer.</p>`; }
+    }
+    if (S.ok % 5 === 0) note += `<p><b>Meilenstein: ${S.ok} Aufgaben richtig gelöst!</b></p>`;
+  } else {
+    S.streak = 0;
+    title = "Nicht ganz.";
+    const typed = p.ip + p.pre + p.per, real = x.ip + x.pre + x.per.repeat(6);
+    if (x.per && !p.per) note = `<p>Diese Dezimalzahl ist periodisch. Eine abgebrochene oder gerundete Zahl ist nur eine Näherung. Markiere die Periode mit Klammern.</p>`;
+    else if (!x.per && p.per) note = `<p>Dieser Bruch hat eine abbrechende Dezimalzahl. Hier gibt es keine Periode.</p>`;
+    else if (real.startsWith(typed) && typed.length > 1) note = `<p>Der Anfang stimmt. Prüfe, wo die Periode beginnt und welche Ziffern sich wiederholen.</p>`;
+    if (S.mode === "ad") {
+      S.bad++; S.run = 0;
+      if (S.bad >= 2 && S.lv > 1) { S.lv--; S.bad = 0; note += `<p>Wir gehen zurück auf Stufe ${S.lv}. Dort kannst du den Lösungsweg noch einmal festigen.</p>`; }
+    }
+  }
+  $("fb").innerHTML = `<div class="msg ${right ? "ok" : "bad"}"><p class="text-xl font-bold">${title}</p>${note}
+    ${right ? "" : "<p>Richtig ist:</p>"}${solution(t)}<details class="mt-2" ${right ? "" : "open"}><summary class="cursor-pointer font-bold">Lösungsweg</summary>${explain(t)}</details></div>`;
+  $("ans").disabled = true; $("check").hidden = true; $("skip").hidden = true; $("next").hidden = false;
+  $("next").focus();
+  stats();
+}
+
+function record(right, cat) {
+  let note = "";
+  S.tot++; S.by[cat][1]++;
+  if (right) {
+    S.ok++; S.streak++; S.by[cat][0]++; S.best = Math.max(S.best, S.streak);
+    if (S.mode === "ad") { S.run++; S.bad = 0; if (S.run >= 3 && S.lv < 3) { S.lv++; S.run = 0; note += `<p><b>Stufe ${S.lv} erreicht!</b> Ab jetzt wird es etwas schwerer.</p>`; } }
+    if (S.ok % 5 === 0) note += `<p><b>Meilenstein: ${S.ok} Aufgaben richtig gelöst!</b></p>`;
+  } else {
+    S.streak = 0;
+    if (S.mode === "ad") { S.bad++; S.run = 0; if (S.bad >= 2 && S.lv > 1) { S.lv--; S.bad = 0; note += `<p>Wir gehen zurück auf Stufe ${S.lv}. Dort kannst du den Lösungsweg noch einmal festigen.</p>`; } }
+  }
+  return note;
+}
+function solB(t) { return `<p class="text-xl"><b>${fmtH(t.x)} = <span class="align-middle">${fracH(t.n, t.d)}</span></b></p>`; }
+function explainB(t) {
+  const {n, d, x} = t, ol = '<ol class="list-decimal pl-5 my-1 space-y-1">';
+  const k = x.pre.length, m = x.per.length;
+  if (!m) {
+    const N = +(x.ip + x.pre), T = 10 ** k, g = gcd(N, T);
+    return `${ol}<li>Schreibe die Ziffern ohne Komma als Zähler (ohne führende Nullen). ${k} Nachkommastelle${k > 1 ? "n" : ""} ergeben den Nenner ${T}: ${fmtT(x)} = ${N}/${T}.</li><li>${g > 1 ? `Kürze mit ${g}: ${N}/${T} = ${N / g}/${T / g}.` : "Der Bruch lässt sich nicht weiter kürzen."}</li><li>Ergebnis: <b>${n}/${d}</b></li></ol>`;
+  }
+  const A = +(x.ip + x.pre), AP = +(x.ip + x.pre + x.per), Nn = AP - A, De = (10 ** m - 1) * 10 ** k, g = gcd(Nn, De);
+  const nines = m === 1 ? "eine 9" : "zwei Neunen", zeros = k === 0 ? "keine Null" : k === 1 ? "eine Null" : "zwei Nullen";
+  return `${ol}<li>Zahl ohne Komma bis zum Ende der ersten Periode: ${AP}. Zahl ohne Komma bis zum Ende der Vorperiode: ${A}.</li><li>Zähler = ${AP} − ${A} = ${Nn}. Nenner: ${nines} und ${zeros}, also ${De}. Das ergibt ${Nn}/${De}.</li><li>Kürze mit ${g}: <b>${Nn / g}/${De / g}</b></li></ol>`;
+}
+function checkB() {
+  const t = S.task, sn = $("num").value.trim(), sd = $("den").value.trim();
+  if (!/^\d{1,9}$/.test(sn) || !/^\d{1,9}$/.test(sd) || +sd === 0) {
+    $("fb").innerHTML = `<div class="msg warn">Trage Zähler und Nenner als ganze Zahlen ein. Der Nenner darf nicht 0 sein.</div>`;
+    return;
+  }
+  const a = +sn, b = +sd, val = a * t.d === t.n * b, red = gcd(a, b) === 1, strict = $("strict").checked, right = val && (red || !strict);
+  let note = "";
+  if (val && red) note = `<p>Dein Bruch ist bereits vollständig gekürzt.</p>`;
+  else if (val) note = right ? `<p><b>Tipp:</b> Du hättest noch zu ${t.n}/${t.d} kürzen können.</p>` : `<p>Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt. Kürze zu ${t.n}/${t.d} (die Option „Nur vollständig gekürzte Brüche akzeptieren“ ist aktiv).</p>`;
+  else if (b <= 1000) { const y = expand(a, b); note = `<p>Dein Bruch ${a}/${b} ergibt ${fmtH(y)}. Gesucht war ${fmtH(t.x)}.</p>`; }
+  S.done = true;
+  note += record(right, t.cat);
+  $("fb").innerHTML = `<div class="msg ${right ? "ok" : "bad"}"><p class="text-xl font-bold">${right ? "Richtig!" : val ? "Fast!" : "Nicht ganz."}</p>${note}${right ? "" : "<p>Richtig ist:</p>"}${solB(t)}<details class="mt-2" ${right ? "" : "open"}><summary class="cursor-pointer font-bold">Lösungsweg</summary>${explainB(t)}</details></div>`;
+  $("num").disabled = true; $("den").disabled = true; $("check").hidden = true; $("skip").hidden = true; $("next").hidden = false;
+  $("next").focus();
+  stats();
+}
+function stats() {
+  $("sOk").textContent = S.ok; $("sTot").textContent = S.tot;
+  $("sStreak").textContent = S.streak; $("sBest").textContent = S.best;
+  $("sLv").textContent = S.mode === "ad" ? S.lv : "–";
+  const m = S.ok % 5, goal = S.ok - m + 5;
+  $("bar").style.width = (m / 5 * 100) + "%";
+  $("barWrap").setAttribute("aria-valuenow", m);
+  $("goal").textContent = `Noch ${goal - S.ok} richtige Aufgabe${goal - S.ok > 1 ? "n" : ""} bis zum nächsten Meilenstein (${goal}).`;
+  const acc = S.tot ? S.ok / S.tot : null;
+  $("cheer").textContent = acc === null ? "Los geht’s!" : acc >= .8 ? "Stark, weiter so!" : acc >= .5 ? "Gute Fortschritte!" : "Dranbleiben lohnt sich. Lies die Lösungswege.";
+  $("byCat").innerHTML = Object.keys(CATS).map(k => `<div class="pill text-center">${CATS[k]}: ${S.by[k][0]} von ${S.by[k][1]}</div>`).join("");
+}
+
+function setMode(m) { S.mode = m; S.run = 0; S.bad = 0; ui(); stats(); gen(); }
+function ui() {
+  document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === S.mode));
+  document.querySelectorAll("[data-lv]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.lv === S.sel));
+  document.querySelectorAll("[data-dir]").forEach(b => b.setAttribute("aria-pressed", b.dataset.dir === S.dir));
+  $("lvls").hidden = S.mode === "ad";
+  $("modeHelp").textContent = HELP[S.mode];
+}
+function insert(txt, back) {
+  const i = $("ans"); if (i.disabled) return;
+  const a = i.selectionStart ?? i.value.length, b = i.selectionEnd ?? a;
+  i.value = i.value.slice(0, a) + txt + i.value.slice(b);
+  const c = a + txt.length - (back || 0);
+  i.focus(); i.setSelectionRange(c, c); preview();
+}
+function preview() {
+  const raw = $("ans").value, p = parse(raw);
+  $("prev").innerHTML = !raw.trim() ? "" : p ? `<span class="muted">Gelesen als:</span> <b>${fmtH(p)}</b>` : `<span class="muted">Noch nicht lesbar. Achte auf das Format, z. B. 0,1(6).</span>`;
+}
+
+$("modes").addEventListener("click", e => { const b = e.target.closest("[data-mode]"); if (b) setMode(b.dataset.mode); });
+$("lvls").addEventListener("click", e => { const b = e.target.closest("[data-lv]"); if (b) { S.sel = +b.dataset.lv; ui(); gen(); } });
+$("bComma").onclick = () => insert(",");
+$("bPer").onclick = () => { const i = $("ans"), s = i.value.slice(i.selectionStart, i.selectionEnd); s ? insert(`(${s})`) : insert("()", 1); };
+$("check").onclick = check;
+$("next").onclick = gen;
+$("skip").onclick = gen;
+$("ans").addEventListener("input", preview);
+$("ans").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); S.done ? gen() : check(); } });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && document.activeElement === document.body) gen(); });
+$("dirs").addEventListener("click", e => { const b = e.target.closest("[data-dir]"); if (b) { S.dir = b.dataset.dir; ui(); gen(); } });
+$("num").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("den").focus(); } });
+$("den").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); S.done ? gen() : check(); } });
+
+// Hell-/Dunkelmodus: folgt zunächst dem System, die Wahl wird (falls möglich) gemerkt
+const root = document.documentElement;
+try { const st = localStorage.getItem("theme"); if (st) root.dataset.theme = st; } catch (e) {}
+const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+const themeBtn = () => { $("theme").textContent = isDark() ? "☀ Hell" : "☾ Dunkel"; };
+$("theme").onclick = () => { root.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {} themeBtn(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeBtn);
+themeBtn();
+
+ui(); stats(); gen();
+</script>
+</body>
+</html>
