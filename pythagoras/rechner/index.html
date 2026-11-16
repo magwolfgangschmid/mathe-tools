@@ -1,3 +1,4 @@
+  <!-- Zeile 180: S.okRun >= 3  Zahl der Versuche für nächsten Level -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -177,7 +178,7 @@ function finish(ok){
   if(ok){S.score++;S.streak++;S.best=Math.max(S.best,S.streak);S.okRun++;S.badRun=0}else{S.streak=0;S.badRun++;S.okRun=0}
   let note='';
   if(S.mode==='adaptive'){
-    if(S.okRun>=3&&S.level<5){S.level++;S.okRun=0;note=`Stark – weiter mit Stufe ${S.level}!`}
+    if(S.okRun>=4&&S.level<5){S.level++;S.okRun=0;note=`Stark – weiter mit Stufe ${S.level}!`}
     else if(S.badRun>=2&&S.level>1){S.level--;S.badRun=0;note=`Kein Problem – wir festigen Stufe ${S.level}.`}
   }
   const t=S.task,fb=$('#fb');
