@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brüche addieren &amp; subtrahieren</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}</script>
+<style>
+:root{--pro:#d5dae3;--bg:#f6f5ee;--grid:#d3dcec;--card:#fff;--ink:#1b2a4a;--mute:#5a6785;--acc:#2447c5;--accfg:#fff;--ok:#17803d;--okbg:#dcf5e3;--bad:#b42318;--badbg:#fde4e1;--line:#c9d2e3}
+.dark{--pro:#3a4a52;--bg:#1d2a26;--grid:#2b3c37;--card:#26352f;--ink:#f1efe4;--mute:#a9b8b0;--acc:#f2c94c;--accfg:#1d2a26;--ok:#7be0a0;--okbg:#1f4a35;--bad:#ff9d8f;--badbg:#5a2a26;--line:#41554d}
+body{font-family:Lexend,system-ui,sans-serif;color:var(--ink);background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:14px}
+.mute{color:var(--mute)}
+.chip{border:1.5px solid var(--line);border-radius:10px;font-weight:600;min-width:2.9rem;padding:.55rem .7rem;transition:background .15s;text-align:center}
+.chip.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.chip.pro{background:var(--pro)}.chip.pro.on{background:#475569;color:#fff;border-color:var(--acc)}
+.chip small{display:block;font-size:.65rem;font-weight:600;opacity:.8;line-height:1}
+.primary{background:var(--acc);color:var(--accfg);border-radius:10px;padding:.75rem 1.4rem;font-weight:600}
+.ghost{border:1.5px solid var(--line);border-radius:10px;padding:.65rem 1.1rem;font-weight:600;background:var(--card)}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 .12em;font-size:.9em}
+.fr>span:first-child{border-bottom:2px solid currentColor;padding:0 .3em}.fr>span:last-child{padding:0 .3em}
+.mx{display:inline-flex;align-items:center}.w{margin-right:.1em;font-size:1.1em}
+.expr{font-weight:600;font-size:1.7rem;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;justify-content:center;line-height:1.2}
+.inp{width:4rem;text-align:center;border:1.5px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);padding:.45rem .2rem;font-weight:600;font-size:1.1rem}
+.bar{height:2px;background:currentColor;margin:.2rem 0}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+input[type=range]{accent-color:var(--acc);width:100%}
+.steps li{margin:.4rem 0}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-2xl mx-auto p-3 sm:p-6 space-y-3">
+
+<header class="flex items-center justify-between gap-3">
+  <div><h1 class="text-xl sm:text-2xl font-extrabold">Brüche rechnen</h1><p class="mute text-sm">Addieren und subtrahieren</p></div>
+  <button id="theme" class="card px-3 py-2 text-lg font-semibold" aria-label="Hell/Dunkel umschalten"></button>
+</header>
+
+<section class="card p-4 space-y-4">
+  <div>
+    <h2 class="font-semibold mb-2">Nenner-Bausteine</h2>
+    <div id="bl" class="flex flex-wrap gap-2"></div>
+    <p class="mute text-xs mt-2">Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.</p>
+  </div>
+  <div>
+    <h2 class="font-semibold mb-2">Zusatz-Schalter</h2>
+    <div id="tg" class="flex flex-wrap gap-2"></div>
+  </div>
+  <div>
+    <h2 class="font-semibold mb-2">Modus</h2>
+    <div class="flex gap-2"><button id="mM" class="chip flex-1">Manuell</button><button id="mA" class="chip flex-1">Adaptiv</button></div>
+  </div>
+  <div id="manualBox"><h2 class="font-semibold mb-2">Stufe</h2><div id="lvls" class="grid grid-cols-2 gap-2"></div></div>
+  <div id="adaptBox" class="hidden space-y-2">
+    <label for="thr" class="font-semibold block">Aufstieg nach <span id="thrV">5</span> richtigen Aufgaben in Folge</label>
+    <input id="thr" type="range" min="3" max="7" step="1" value="5">
+    <div class="h-2 rounded-full overflow-hidden" style="background:var(--line)"><div id="pbar" class="h-full" style="background:var(--acc);width:0"></div></div>
+    <p id="adaptInfo" class="mute text-sm"></p>
+  </div>
+</section>
+
+<section class="grid grid-cols-3 gap-2 text-center">
+  <div class="card p-2"><div class="mute text-xs">Punkte</div><div id="sScore" class="text-xl font-extrabold">0</div></div>
+  <div class="card p-2"><div class="mute text-xs">Serie (Bestwert)</div><div class="text-xl font-extrabold"><span id="sStreak">0</span> <span id="sBest" class="mute text-sm font-semibold">(0)</span></div></div>
+  <div class="card p-2"><div class="mute text-xs">Richtig</div><div id="sRate" class="text-xl font-extrabold">0/0</div></div>
+</section>
+
+<section class="card p-4 sm:p-6 space-y-4" aria-live="polite">
+  <div id="qMeta" class="mute text-sm"></div>
+  <div id="expr" class="expr py-2"></div>
+  <div id="ans" class="flex items-center justify-center gap-2 flex-wrap">
+    <button id="sg" class="chip" aria-label="Vorzeichen wechseln">+</button>
+    <input id="iw" class="inp" inputmode="numeric" placeholder="ganz" aria-label="Ganze Zahl">
+    <div class="flex flex-col items-center"><input id="iz" class="inp" inputmode="numeric" placeholder="Zähler" aria-label="Zähler"><div class="bar w-full"></div><input id="in" class="inp" inputmode="numeric" placeholder="Nenner" aria-label="Nenner"></div>
+    <button id="chk" class="primary">Prüfen</button>
+  </div>
+  <p id="hint" class="text-sm text-center" style="color:var(--bad)"></p>
+  <div id="fb" class="hidden rounded-xl p-4 space-y-2"></div>
+  <div id="steps" class="hidden card p-4 text-sm"></div>
+  <div class="flex gap-2 flex-wrap"><button id="rw" class="ghost hidden">Rechenweg anzeigen</button><button id="next" class="primary hidden">Nächste Aufgabe</button></div>
+</section>
+<footer class="mute text-xs text-center pb-4">Antwort als Bruch (7/4), gemischte Zahl (1 3/4) oder ganze Zahl, immer gekürzt. Leeres Feld „ganz“ = 0.</footer>
+</div>
+
+<script>
+const BL=[2,3,5,7,4,6],PRO=[11,13,17,19],SUB={4:'2²',6:'2·3'};
+const LV=['Gleichnamig','Ungleichnamig','Gemischt & negativ','Drei Summanden'];
+const S={bl:new Set([2,3,5]),neg:false,mix:false,three:false,mode:'manual',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,run:0,wrong:0,q:null,done:false,sign:1};
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a),lcm=(a,b)=>a/gcd(a,b)*b;
+const M='−';
+
+function genDen(){
+  const b=[...S.bl],cap=b.some(x=>x>=11)?130:72;
+  for(let i=0;i<50;i++){let d=1;for(let j=rnd(1,2);j>0;j--)d*=pick(b);if(d>=2&&d<=cap)return d;}
+  return pick(b);
+}
+function make(){
+  const L=S.level,mixed=S.mix||(L===3&&!S.neg),k=(L===4||(S.three&&L>=2))?3:2,same=L===1;
+  for(let t=0;t<300;t++){
+    const d0=genDen(),ts=[];
+    for(let i=0;i<k;i++){const d=same?d0:genDen();ts.push({s:1,w:mixed&&Math.random()<.6?rnd(1,4):0,n:rnd(1,d-1),d,v:''});}
+    if(!same&&ts.every(x=>x.d===ts[0].d))continue;
+    if(mixed&&!ts.some(x=>x.w))pick(ts).w=rnd(1,4);
+    ts.forEach((x,i)=>{if(Math.random()<.45&&(S.neg||i>0))x.s=-1;
+      if(S.neg&&i>0){if(x.s<0&&Math.random()<.5)x.v='p';else if(x.s>0&&Math.random()<.25)x.v='m';}});
+    const Lc=ts.reduce((a,x)=>lcm(a,x.d),1);
+    if(Lc>(t<200?400:5000))continue;
+    const N=ts.reduce((a,x)=>a+x.s*(x.w*x.d+x.n)*(Lc/x.d),0);
+    if(N===0||(!S.neg&&N<0))continue;
+    return{ts,N,L:Lc};
+  }
+  return{ts:[{s:1,w:0,n:1,d:2,v:''},{s:1,w:0,n:1,d:2,v:''}],N:2,L:2};
+}
+const fr=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const mixed=(w,n,d)=>`<span class="mx">${w?`<b class="w">${w}</b>`:''}${fr(n,d)}</span>`;
+function exprHTML(ts){return ts.map((x,i)=>{const f=mixed(x.w,x.n,x.d);
+  if(i===0)return x.s<0?`${M} ${f}`:f;
+  if(x.v==='p')return `+ (${M}${f})`;if(x.v==='m')return `− (${M}${f})`;
+  return `${x.s<0?M:'+'} ${f}`;}).join(' ')+' = ?';}
+function resHTML(N,L){
+  const g=gcd(N,L),n=Math.abs(N)/g,d=L/g,s=N<0?M:'',w=Math.floor(n/d),r=n%d;
+  if(r===0)return `${s}${w}`;
+  return `<span class="mx">${s}${w?`<b class="w">${w}</b>`:''}${fr(r,d)}</span>`;
+}
+function stepsHTML(q){
+  const{ts,N,L}=q,g=gcd(N,L),n=Math.abs(N)/g,d=L/g,any=ts.some(x=>x.w);
+  const sg=x=>x.s<0?M:'+';
+  const imp=ts.map(x=>({s:x.s,n:x.w*x.d+x.n,d:x.d,f:L/x.d}));
+  let h='<ol class="steps list-decimal pl-5">';
+  if(any)h+=`<li><b>Gemischte Zahlen umwandeln:</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
+  h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
+  h+=`<li><b>Erweitern auf ${L}:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n,x.d)} = ${fr(x.n*x.f,L)}${x.f>1?` <small>(·${x.f})</small>`:''}`).join(' &nbsp; ')}</li>`;
+  h+=`<li><b>Zähler zusammenfassen:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.n*x.f}`).join(' ')} = ${N} → ${fr(N<0?M+Math.abs(N):N,L)}</li>`;
+  h+=g>1?`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(N<0?M+n:n,d)}</li>`:`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1, der Bruch ist schon gekürzt.</li>`;
+  if(n>d&&d>1)h+=`<li><b>Als gemischte Zahl:</b> ${resHTML(N,L)}</li>`;
+  return h+'</ol>';
+}
+
+function newQ(){
+  S.q=make();S.done=false;S.sign=1;
+  $('qMeta').textContent=`Stufe ${S.level}: ${LV[S.level-1]}`+(S.level===3&&!S.mix&&!S.neg?' · gemischte Zahlen automatisch dabei':'');
+  $('expr').innerHTML=exprHTML(S.q.ts);
+  ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
+  $('sg').textContent='+';$('hint').textContent='';
+  ['fb','steps','rw','next'].forEach(i=>$(i).classList.add('hidden'));
+  $('iw').focus({preventScroll:true});
+}
+function check(){
+  if(S.done)return;const q=S.q;
+  const w=$('iw').value.trim(),z=$('iz').value.trim(),n=$('in').value.trim();
+  if(!/^\d*$/.test(w+z+n))return $('hint').textContent='Bitte nur Ziffern eingeben.';
+  if((z&&!n)||(!z&&n))return $('hint').textContent='Gib Zähler und Nenner an.';
+  if(!z&&!w)return $('hint').textContent='Trage eine Zahl ein.';
+  if(z&&+n===0)return $('hint').textContent='Der Nenner darf nicht 0 sein.';
+  const W=+w||0,Z=+z||0,D=z?+n:1,val=S.sign*(W*D+Z),ok=val*q.L===q.N*D;
+  if(ok&&z&&(gcd(Z,D)!==1||(W>0&&Z>=D)))return $('hint').textContent='Der Wert stimmt, aber der Bruch ist noch nicht gekürzt bzw. nicht als gemischte Zahl geschrieben.';
+  $('hint').textContent='';S.done=true;S.total++;let msg='';
+  if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.run++;S.wrong=0;
+    if(S.mode==='adaptive'&&S.run>=S.thr){S.run=0;if(S.level<4){S.level++;msg=`Aufstieg: weiter mit Stufe ${S.level}.`;}else msg='Alle Stufen gemeistert – du bleibst auf Stufe 4.';}
+  }else{S.streak=0;S.run=0;S.wrong++;
+    if(S.mode==='adaptive'&&S.wrong>=2&&S.level>1){S.level--;S.wrong=0;msg=`Zwei Fehler in Folge: zurück zu Stufe ${S.level}.`;}}
+  ['iw','iz','in'].forEach(i=>$(i).disabled=true);$('sg').disabled=true;$('chk').disabled=true;
+  const fb=$('fb');fb.style.background=ok?'var(--okbg)':'var(--badbg)';fb.style.color=ok?'var(--ok)':'var(--bad)';
+  fb.innerHTML=`<div class="font-extrabold text-lg">${ok?'✔ Richtig!':'✘ Leider falsch.'}</div><div class="flex items-center gap-2 flex-wrap" style="color:var(--ink)">Ergebnis: <span class="expr" style="font-size:1.3rem">${resHTML(q.N,q.L)}</span></div>`+(msg?`<p class="text-sm font-semibold">${msg}</p>`:'');
+  $('steps').innerHTML=stepsHTML(q);$('rw').textContent='Rechenweg anzeigen';
+  fb.classList.remove('hidden');$('rw').classList.remove('hidden');$('next').classList.remove('hidden');$('next').focus();
+  stats();
+}
+function stats(){
+  try{localStorage.setItem('bz',JSON.stringify({s:S.score,b:S.best,r:S.right,t:S.total}))}catch(e){}
+  $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
+  $('pbar').style.width=(S.mode==='adaptive'?Math.min(100,S.run/S.thr*100):0)+'%';
+  $('adaptInfo').textContent=`Aktuell Stufe ${S.level} – ${S.run} von ${S.thr} in Folge. Zwei Fehler in Folge: eine Stufe zurück.`;
+}
+function cfg(){
+  const chip=(d,on,cls,sub)=>`<button class="chip ${cls}${on?' on':''}" aria-pressed="${on}" data-b="${d}">${d}${sub?`<small>${sub}</small>`:''}</button>`;
+  $('bl').innerHTML=BL.map(d=>chip(d,S.bl.has(d),'',SUB[d]||'')).join('')+PRO.map(d=>chip(d,S.bl.has(d),'pro ','Profi')).join('');
+  $('bl').querySelectorAll('button').forEach(b=>b.onclick=()=>{const d=+b.dataset.b;
+    if(S.bl.has(d)){if(S.bl.size>1)S.bl.delete(d);}else S.bl.add(d);cfg();if(!S.done)newQ();});
+  const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['three','3 Summanden']];
+  $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' on':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
+  $('tg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];cfg();if(!S.done)newQ();});
+  $('mM').className='chip flex-1'+(S.mode==='manual'?' on':'');$('mA').className='chip flex-1'+(S.mode==='adaptive'?' on':'');
+  $('manualBox').classList.toggle('hidden',S.mode!=='manual');$('adaptBox').classList.toggle('hidden',S.mode!=='adaptive');
+  $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' on':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
+  $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;cfg();newQ();});
+  stats();
+}
+function setMode(m){S.mode=m;S.run=0;S.wrong=0;if(m==='adaptive')S.level=1;cfg();newQ();}
+$('mM').onclick=()=>setMode('manual');$('mA').onclick=()=>setMode('adaptive');
+$('thr').oninput=e=>{S.thr=+e.target.value;$('thrV').textContent=S.thr;S.run=Math.min(S.run,S.thr-1);stats();};
+$('sg').onclick=()=>{S.sign=-S.sign;$('sg').textContent=S.sign<0?M:'+';};
+$('chk').onclick=check;
+$('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textContent=h?'Rechenweg anzeigen':'Rechenweg ausblenden';};
+$('next').onclick=newQ;
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();S.done?newQ():check();});
+function theme(){const d=document.documentElement.classList.contains('dark');$('theme').textContent=d?'☀️ Hell':'🌙 Dunkel';}
+$('theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}theme();};
+try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
+theme();cfg();newQ();
+</script>
+</body>
+</html>
