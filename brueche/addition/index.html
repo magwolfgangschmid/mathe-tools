@@ -88,7 +88,7 @@ input[type=range]{accent-color:var(--acc);width:100%}
 
 <script>
 const BL=[2,3,5,7,4,6],PRO=[11,13,17,19],SUB={4:'2²',6:'2·3'};
-const LV=['Gleichnamig','Ungleichnamig','Gemischt & negativ','Drei Summanden'];
+const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner','ein Nenner ist ein Vielfaches des anderen','Hauptnenner im Kopf bestimmbar','Nebenrechnung nötig'];
 const S={bl:new Set([2,3,5]),neg:false,mix:false,three:false,mode:'manual',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,run:0,wrong:0,q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -100,20 +100,33 @@ function genDen(){
   for(let i=0;i<50;i++){let d=1;for(let j=rnd(1,2);j>0;j--)d*=pick(b);if(d>=2&&d<=cap)return d;}
   return pick(b);
 }
+const divs=D=>{const r=[];for(let i=2;i<D;i++)if(D%i===0&&[...S.bl].some(b=>i%b===0))r.push(i);return r;};
+function densFor(L,k,t){
+  if(L===1){const d=genDen();return Array(k).fill(d);}
+  if(L===2){const D=genDen(),v=divs(D);if(!v.length)return null;
+    const a=[D,pick(v)];while(a.length<k)a.push(pick(v.concat(D)));return a.sort(()=>Math.random()-.5);}
+  return Array.from({length:k},genDen);
+}
+function numFor(d,L){
+  const all=Array.from({length:d-1},(_,i)=>i+1),cop=all.filter(n=>gcd(n,d)===1),red=all.filter(n=>gcd(n,d)>1);
+  if(L<=2)return pick(cop);
+  return red.length&&Math.random()<.5?pick(red):pick(all);
+}
 function make(){
-  const L=S.level,mixed=S.mix||(L===3&&!S.neg),k=(L===4||(S.three&&L>=2))?3:2,same=L===1;
-  for(let t=0;t<300;t++){
-    const d0=genDen(),ts=[];
-    for(let i=0;i<k;i++){const d=same?d0:genDen();ts.push({s:1,w:mixed&&Math.random()<.6?rnd(1,4):0,n:rnd(1,d-1),d,v:''});}
-    if(!same&&ts.every(x=>x.d===ts[0].d))continue;
-    if(mixed&&!ts.some(x=>x.w))pick(ts).w=rnd(1,4);
+  const L=S.level,k=S.three?3:2;
+  for(let t=0;t<400;t++){
+    const relax=t>=350,dens=densFor(L,k,t)||(relax?Array.from({length:k},genDen):null);if(!dens)continue;
+    const mx=Math.max(...dens),Lc=dens.reduce((a,d)=>lcm(a,d),1),chain=Lc===mx;
+    if(!relax&&L===2&&(!chain||dens.every(d=>d===mx)))continue;
+    if(!relax&&L===3&&(chain||Lc>(t<250?40:400)))continue;
+    if(!relax&&L===4&&(chain||Lc<(t<250?42:0)||Lc>(t<300?400:5000)))continue;
+    const ts=dens.map(d=>({s:1,w:S.mix&&Math.random()<.6?rnd(1,4):0,n:numFor(d,L),d,v:''}));
+    if(S.mix&&!ts.some(x=>x.w))pick(ts).w=rnd(1,4);
     ts.forEach((x,i)=>{if(Math.random()<.45&&(S.neg||i>0))x.s=-1;
       if(S.neg&&i>0){if(x.s<0&&Math.random()<.5)x.v='p';else if(x.s>0&&Math.random()<.25)x.v='m';}});
-    const Lc=ts.reduce((a,x)=>lcm(a,x.d),1);
-    if(Lc>(t<200?400:5000))continue;
     const N=ts.reduce((a,x)=>a+x.s*(x.w*x.d+x.n)*(Lc/x.d),0);
     if(N===0||(!S.neg&&N<0))continue;
-    return{ts,N,L:Lc};
+    return{ts,N,L:Lc,relax};
   }
   return{ts:[{s:1,w:0,n:1,d:2,v:''},{s:1,w:0,n:1,d:2,v:''}],N:2,L:2};
 }
@@ -134,7 +147,7 @@ function stepsHTML(q){
   const imp=ts.map(x=>({s:x.s,n:x.w*x.d+x.n,d:x.d,f:L/x.d}));
   let h='<ol class="steps list-decimal pl-5">';
   if(any)h+=`<li><b>Gemischte Zahlen umwandeln:</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
-  h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
+  h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:L===Math.max(...ts.map(x=>x.d))?`Der größte Nenner ${L} ist ein Vielfaches der anderen, also ist ${L} der Hauptnenner.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
   h+=`<li><b>Erweitern auf ${L}:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n,x.d)} = ${fr(x.n*x.f,L)}${x.f>1?` <small>(·${x.f})</small>`:''}`).join(' &nbsp; ')}</li>`;
   h+=`<li><b>Zähler zusammenfassen:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.n*x.f}`).join(' ')} = ${N} → ${fr(N<0?M+Math.abs(N):N,L)}</li>`;
   h+=g>1?`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(N<0?M+n:n,d)}</li>`:`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1, der Bruch ist schon gekürzt.</li>`;
@@ -144,7 +157,7 @@ function stepsHTML(q){
 
 function newQ(){
   S.q=make();S.done=false;S.sign=1;
-  $('qMeta').textContent=`Stufe ${S.level}: ${LV[S.level-1]}`+(S.level===3&&!S.mix&&!S.neg?' · gemischte Zahlen automatisch dabei':'');
+  $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(S.q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(S.q.ts);
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
   $('sg').textContent='+';$('hint').textContent='';
