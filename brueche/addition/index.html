@@ -10,8 +10,8 @@
 <script>tailwind.config={darkMode:'class'}</script>
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}</script>
 <style>
-:root{--pro:#d5dae3;--bg:#f6f5ee;--grid:#d3dcec;--card:#fff;--ink:#1b2a4a;--mute:#5a6785;--acc:#2447c5;--accfg:#fff;--ok:#17803d;--okbg:#dcf5e3;--bad:#b42318;--badbg:#fde4e1;--line:#c9d2e3}
-.dark{--pro:#3a4a52;--bg:#1d2a26;--grid:#2b3c37;--card:#26352f;--ink:#f1efe4;--mute:#a9b8b0;--acc:#f2c94c;--accfg:#1d2a26;--ok:#7be0a0;--okbg:#1f4a35;--bad:#ff9d8f;--badbg:#5a2a26;--line:#41554d}
+:root{--warn:#b45309;--pro:#d5dae3;--bg:#f6f5ee;--grid:#d3dcec;--card:#fff;--ink:#1b2a4a;--mute:#5a6785;--acc:#2447c5;--accfg:#fff;--ok:#17803d;--okbg:#dcf5e3;--bad:#b42318;--badbg:#fde4e1;--line:#c9d2e3}
+.dark{--warn:#f5b942;--pro:#3a4a52;--bg:#1d2a26;--grid:#2b3c37;--card:#26352f;--ink:#f1efe4;--mute:#a9b8b0;--acc:#f2c94c;--accfg:#1d2a26;--ok:#7be0a0;--okbg:#1f4a35;--bad:#ff9d8f;--badbg:#5a2a26;--line:#41554d}
 body{font-family:Lexend,system-ui,sans-serif;color:var(--ink);background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
 .card{background:var(--card);border:1.5px solid var(--line);border-radius:14px}
 .mute{color:var(--mute)}
@@ -78,12 +78,12 @@ input[type=range]{accent-color:var(--acc);width:100%}
     <div class="flex flex-col items-center"><input id="iz" class="inp" inputmode="numeric" placeholder="Zähler" aria-label="Zähler"><div class="bar w-full"></div><input id="in" class="inp" inputmode="numeric" placeholder="Nenner" aria-label="Nenner"></div>
     <button id="chk" class="primary">Prüfen</button>
   </div>
-  <p id="hint" class="text-sm text-center" style="color:var(--bad)"></p>
+  <p id="hint" class="text-sm text-center font-semibold"></p>
   <div id="fb" class="hidden rounded-xl p-4 space-y-2"></div>
   <div id="steps" class="hidden card p-4 text-sm"></div>
   <div class="flex gap-2 flex-wrap"><button id="rw" class="ghost hidden">Rechenweg anzeigen</button><button id="next" class="primary hidden">Nächste Aufgabe</button></div>
 </section>
-<footer class="mute text-xs text-center pb-4">Antwort als Bruch (7/4), gemischte Zahl (1 3/4) oder ganze Zahl, immer gekürzt. Leeres Feld „ganz“ = 0.</footer>
+<footer class="mute text-xs text-center pb-4">Antwort als gemischte Zahl (1 3/4) oder ganze Zahl, vollständig gekürzt, ohne unechte Brüche. Das Minus steht vor der ganzen Zahl: Knopf links oder „-1“ im Feld „ganz“.</footer>
 </div>
 
 <script>
@@ -166,13 +166,22 @@ function newQ(){
 }
 function check(){
   if(S.done)return;const q=S.q;
-  const w=$('iw').value.trim(),z=$('iz').value.trim(),n=$('in').value.trim();
-  if(!/^\d*$/.test(w+z+n))return $('hint').textContent='Bitte nur Ziffern eingeben.';
-  if((z&&!n)||(!z&&n))return $('hint').textContent='Gib Zähler und Nenner an.';
-  if(!z&&!w)return $('hint').textContent='Trage eine Zahl ein.';
-  if(z&&+n===0)return $('hint').textContent='Der Nenner darf nicht 0 sein.';
-  const W=+w||0,Z=+z||0,D=z?+n:1,val=S.sign*(W*D+Z),ok=val*q.L===q.N*D;
-  if(ok&&z&&(gcd(Z,D)!==1||(W>0&&Z>=D)))return $('hint').textContent='Der Wert stimmt, aber der Bruch ist noch nicht gekürzt bzw. nicht als gemischte Zahl geschrieben.';
+  const hint=(m,warn)=>{const h=$('hint');h.textContent=m;h.style.color=warn?'var(--warn)':'var(--bad)';};
+  const wr=$('iw').value.trim().replace('−','-'),z=$('iz').value.trim(),n=$('in').value.trim();
+  if(/[-−]/.test(z+n))return hint('Das Minus steht nur vor der ganzen Zahl (Knopf oder Feld „ganz“), nicht im Zähler oder Nenner.');
+  const m=wr.match(/^(-?)(\d*)$/);
+  if(!m||!/^\d*$/.test(z+n))return hint('Bitte nur Ziffern eingeben (ein Minus nur im Feld „ganz“).');
+  const w=m[2];
+  if(m[1]&&S.sign<0)return hint('Das Minus nur einmal angeben: mit dem Knopf oder im Feld „ganz“.');
+  const sg=m[1]||S.sign<0?-1:1,zero=z!==''&&+z===0;
+  if(!zero&&((z&&!n)||(!z&&n)))return hint('Gib Zähler und Nenner an.');
+  if(!z&&!w)return hint('Trage eine Zahl ein.');
+  if(z&&!zero&&+n===0)return hint('Der Nenner darf nicht 0 sein.');
+  const W=+w||0,Z=zero?0:+z,D=z&&!zero?+n:1,val=sg*(W*D+Z),ok=val*q.L===q.N*D;
+  if(ok&&Z>0){
+    if(Z>=D)return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
+    if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
+  }
   $('hint').textContent='';S.done=true;S.total++;let msg='';
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.run++;S.wrong=0;
     if(S.mode==='adaptive'&&S.run>=S.thr){S.run=0;if(S.level<4){S.level++;msg=`Aufstieg: weiter mit Stufe ${S.level}.`;}else msg='Alle Stufen gemeistert – du bleibst auf Stufe 4.';}
