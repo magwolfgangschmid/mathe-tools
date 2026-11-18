@@ -166,7 +166,7 @@
     get max() { const v = parseInt(this.getAttribute('max'), 10); return isNaN(v) ? 7 : v; }
     get threshold() {
       const v = parseInt(this.getAttribute('threshold'), 10);
-      return Math.min(this.max, Math.max(this.min, isNaN(v) ? 5 : v));
+      return Math.min(this.max, Math.max(this.min, isNaN(v) ? 7 : v));
     }
     set threshold(v) { this.setAttribute('threshold', v); }
 
