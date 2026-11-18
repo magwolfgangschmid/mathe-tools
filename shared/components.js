@@ -163,7 +163,7 @@
     get mode() { return this.getAttribute('mode') === 'adaptive' ? 'adaptive' : 'manual'; }
     set mode(v) { this.setAttribute('mode', v); }
     get min() { const v = parseInt(this.getAttribute('min'), 10); return isNaN(v) ? 3 : v; }
-    get max() { const v = parseInt(this.getAttribute('max'), 10); return isNaN(v) ? 7 : v; }
+    get max() { const v = parseInt(this.getAttribute('max'), 10); return isNaN(v) ? 10 : v; }
     get threshold() {
       const v = parseInt(this.getAttribute('threshold'), 10);
       return Math.min(this.max, Math.max(this.min, isNaN(v) ? 7 : v));
