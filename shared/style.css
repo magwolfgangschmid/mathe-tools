@@ -3,7 +3,7 @@
    Autonom: kein Tailwind nötig. Schrift „Lexend“ wird im <head>
    der Seite per Google-Fonts-Link geladen (Fallback: system-ui).
    Einbinden (aus Unterordner):
-   <link rel="stylesheet" href="../../css/style.css">
+   <link rel="stylesheet" href="../../shared/style.css">
 
    Inhalt
    1. Design-Tokens (Light / Dark)
@@ -16,6 +16,10 @@
    8. Eingabefelder, Schieberegler, Fortschritt
    9. Statistik-Kacheln
    10. Mathe-Darstellung (Brüche, gemischte Zahlen, Rechenweg)
+   11. Quiz (Antwortoptionen, große Zahl)
+   12. Tabs, Regel-Referenz, Hilfsklassen
+   13. <app-header> (Web Component)
+   14. <app-mode-toolbar> (Web Component)
    ========================================================= */
 
 
@@ -243,3 +247,108 @@ input[type=range] { accent-color: var(--acc); width: 100%; }
 .steps { list-style: decimal; padding-left: 1.25rem; }
 .steps li { margin: .4rem 0; }
 
+
+/* ---------- 11. Quiz: Antwortoptionen & große Zahl ---------- */
+
+.q-text { font-weight: 600; font-size: 1.125rem; line-height: 1.75rem; }
+
+/* Große Aufgabenzahl (Teilbarkeit) */
+.big {
+  font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums;
+  font-size: 3rem; line-height: 1; text-align: center; padding: .5rem 0;
+}
+@media (min-width: 640px) { .big { font-size: 3.75rem; } }
+
+/* Antwortoptionen:
+   .options--2    zwei Spalten (Ja/Nein, Wahr/Falsch)
+   .options--wide eine Spalte, ab 640px zwei Spalten */
+.options { display: grid; gap: .5rem; grid-template-columns: 1fr; }
+.options--2 { grid-template-columns: 1fr 1fr; }
+@media (min-width: 640px) { .options--wide { grid-template-columns: 1fr 1fr; } }
+
+.option {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: .8rem 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+.option:hover:not(:disabled) { border-color: var(--acc); }
+.option:disabled { opacity: 1; cursor: default; }
+.option.is-ok  { background: var(--ok-bg);  border-color: var(--ok);  color: var(--ok); }
+.option.is-bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+
+.fb-ex { color: var(--ink); }
+
+
+/* ---------- 12. Tabs, Regel-Referenz, Hilfsklassen ---------- */
+
+.chip--left { text-align: left; }
+.stack-md { display: grid; gap: .75rem; }
+.pad-sm { padding: .75rem; }
+
+/* Drei Spalten ab 640px (Stufenauswahl) */
+.grid-levels { display: grid; gap: .5rem; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .grid-levels { grid-template-columns: repeat(3, 1fr); } }
+
+/* Button volle Breite auf dem Handy, sonst nach Inhalt */
+.btn-block { width: 100%; }
+@media (min-width: 640px) { .btn-block { width: auto; justify-self: start; } }
+
+/* Kleines "Profi"-Schild neben Überschriften */
+.badge {
+  font-size: .65rem; font-weight: 600;
+  background: var(--pro);
+  padding: 1px 7px; border-radius: 99px; margin-left: .4rem;
+}
+
+/* Aufklappbare Regelkarten (<details class="card pad-sm">) */
+h3 { margin: 0; font-size: inherit; font-weight: 600; }
+.summary { font-weight: 600; cursor: pointer; padding: .25rem 0; }
+.ref { display: grid; gap: .75rem; margin-top: .5rem; font-size: .875rem; line-height: 1.625; }
+
+
+/* ---------- 13. <app-header> (Web Component) ---------- */
+/* Schlichte Kopfzeile: Zurück-Button | Titel | Hell/Dunkel-Schalter */
+
+app-header {
+  display: block;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: .75rem .75rem 0;
+}
+@media (min-width: 640px) { app-header { padding: 1.5rem 1.5rem 0; } }
+
+.portal-header { display: flex; align-items: center; gap: .75rem; }
+.portal-heading { flex: 1; min-width: 0; }
+.portal-title {
+  font-size: 1.25rem; line-height: 1.75rem; font-weight: 800;
+}
+@media (min-width: 640px) { .portal-title { font-size: 1.5rem; line-height: 2rem; } }
+
+/* Icon-Buttons (Zurück, Theme) */
+.portal-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-width: 2.75rem; min-height: 2.75rem; padding: .4rem .7rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.portal-btn:hover { border-color: var(--acc); }
+.portal-btn svg { flex: none; }
+
+/* Auf schmalen Displays nur der Pfeil */
+@media (max-width: 479px) { .portal-back-label { display: none; } }
+
+
+/* ---------- 14. <app-mode-toolbar> (Web Component) ---------- */
+/* Aufbau: Tabs (optional) + Karte mit Modus und Schwellenregler.
+   Tabs, Modus-Buttons und Regler nutzen .chip, .progress usw. aus den Abschnitten oben. */
+
+app-mode-toolbar { display: grid; gap: .75rem; }
+.toolbar-tabs .chip { min-height: 2.9rem; }
+.toolbar-controls .progress { margin-top: .25rem; }
