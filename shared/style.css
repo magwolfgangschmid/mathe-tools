@@ -20,6 +20,7 @@
    12. Tabs, Regel-Referenz, Hilfsklassen
    13. <app-header> (Web Component)
    14. <app-mode-toolbar> (Web Component)
+   15. Umrechnen-App (Bruch ↔ Dezimalzahl)
    ========================================================= */
 
 
@@ -33,6 +34,7 @@
   --ink: #1b2a4a;         /* Haupttext */
   --mute: #5a6785;        /* Nebentext */
   --line: #c9d2e3;        /* Rahmenlinien */
+  --soft: #e9edf6;        /* sanfte Fläche (Pills, Markierungen) */
 
   --acc: #2447c5;         /* Akzent (aktive Badges, Primär-Button) */
   --acc-fg: #ffffff;      /* Schrift auf Akzent */
@@ -62,6 +64,7 @@
   --ink: #f1efe4;
   --mute: #a9b8b0;
   --line: #41554d;
+  --soft: #30443c;
 
   --acc: #f2c94c;
   --acc-fg: #1d2a26;
@@ -81,6 +84,7 @@ h1, h2, p, ol { margin: 0; }
 button, input { font: inherit; color: inherit; margin: 0; }
 button { background: transparent; border: 0; cursor: pointer; }
 button:disabled, input:disabled { opacity: .6; cursor: not-allowed; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -352,3 +356,56 @@ app-header {
 app-mode-toolbar { display: grid; gap: .75rem; }
 .toolbar-tabs .chip { min-height: 2.9rem; }
 .toolbar-controls .progress { margin-top: .25rem; }
+
+
+/* ---------- 15. Umrechnen-App (Bruch ↔ Dezimalzahl) ---------- */
+
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.grid-3 .chip { font-size: .875rem; padding-inline: .4rem; }
+
+.row--between { justify-content: space-between; align-items: center; }
+.row--between h2 { margin: 0; }
+.row--nowrap { flex-wrap: nowrap; }
+
+/* Kleine Schilder (Aufgabentyp, Kategorien-Statistik) */
+.pill {
+  display: inline-block; background: var(--soft);
+  border-radius: 999px; padding: .15rem .8rem;
+  font-weight: 700; font-size: .9rem; text-align: center;
+}
+
+/* Große Aufgabe: Bruch = ? bzw. Dezimalzahl = Bruch */
+.big--flex { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+
+/* Periode: Überstrich in Warnfarbe */
+.per { text-decoration: overline; text-decoration-thickness: .12em; color: var(--warn); font-weight: 700; }
+
+/* Eingaben */
+.input--fill { flex: 1; width: auto; min-width: 0; font-size: 1.5rem; text-align: left; padding: .45rem .7rem; }
+.input--num { width: 100%; font-size: 1.5rem; }
+.answer-frac--box { width: 9rem; }
+.chip--key { min-height: 2.75rem; font-size: 1.25rem; padding: .3rem .7rem; }
+.chip--text { font-size: 1rem; white-space: nowrap; }
+.prev { min-height: 2rem; font-size: 1.125rem; }
+.check { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+.check input { width: 1.25rem; height: 1.25rem; accent-color: var(--acc); }
+
+/* Feedback-Platz: leer = ohne Lücke */
+.fb-slot:empty { display: none; }
+.lead { font-size: 1.25rem; line-height: 1.75rem; }
+.base { font-size: 1rem; }
+
+/* Schriftliche Division: markierter Rest = Beginn der Periode */
+.rows {
+  font-variant-numeric: tabular-nums; font-size: .95rem;
+  border-left: 3px solid var(--line); padding-left: .75rem; margin: .5rem 0;
+}
+.rows div { padding: .05rem .4rem; }
+.rows .hl { background: var(--soft); font-weight: 700; border-radius: .3rem; }
+
+/* Statistik mit vier Werten */
+.stats--4 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .stats--4 { grid-template-columns: repeat(4, 1fr); } }
+.stat-value--lg { font-size: 1.875rem; line-height: 2.25rem; }
+
+.progress > div { transition: width .3s; }
