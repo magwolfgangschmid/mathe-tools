@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruchrechnen: Kürzen, Erweitern, Multiplizieren, Dividieren</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+
+<!-- Zentrales Design und Komponenten (GitHub Pages, Unterordner) -->
+<link rel="stylesheet" href="../../shared/style.css">
+<script src="../../shared/components.js"></script>
+
+<!-- VORSCHAU-START: nur für die Live-Vorschau im Chat. Vor dem Upload auf GitHub diesen ganzen Block löschen. -->
+<style>
+/* =========================================================
+   style.css – Zentrales Design der Mathe-Lern-Apps
+   Autonom: kein Tailwind nötig. Schrift „Lexend“ wird im <head>
+   der Seite per Google-Fonts-Link geladen (Fallback: system-ui).
+   Einbinden (aus Unterordner):
+   <link rel="stylesheet" href="../../shared/style.css">
+
+   Inhalt
+   1. Design-Tokens (Light / Dark)
+   2. Reset & Typografie
+   3. Layout
+   4. Karten
+   5. Buttons
+   6. Badges (Teiler/Faktoren: inaktiv, aktiv, Profi-grau)
+   7. Feedback (richtig / falsch / Hinweis)
+   8. Eingabefelder, Schieberegler, Fortschritt
+   9. Statistik-Kacheln
+   10. Mathe-Darstellung (Brüche, gemischte Zahlen, Rechenweg)
+   11. Quiz (Antwortoptionen, große Zahl)
+   12. Tabs, Regel-Referenz, Hilfsklassen
+   13. <app-header> (Web Component)
+   14. <app-mode-toolbar> (Web Component)
+   15. Umrechnen-App (Bruch ↔ Dezimalzahl)
+   16. Rechenweg-Kette & Schritt-Eingaben
+   ========================================================= */
+
+
+/* ---------- 1. Design-Tokens ---------- */
+
+/* Light-Mode: creme Papier, blaue Tinte */
+:root {
+  --bg: #f6f5ee;          /* Seitenhintergrund */
+  --grid: #d3dcec;        /* Linien des Karo-Rasters */
+  --card: #ffffff;        /* Karten */
+  --ink: #1b2a4a;         /* Haupttext */
+  --mute: #5a6785;        /* Nebentext */
+  --line: #c9d2e3;        /* Rahmenlinien */
+  --soft: #e9edf6;        /* sanfte Fläche (Pills, Markierungen) */
+
+  --acc: #2447c5;         /* Akzent (aktive Badges, Primär-Button) */
+  --acc-fg: #ffffff;      /* Schrift auf Akzent */
+
+  --ok: #17803d;   --ok-bg: #dcf5e3;      /* richtig */
+  --bad: #b42318;  --bad-bg: #fde4e1;     /* falsch */
+  --warn: #b45309; --warn-bg: #fdf0d5;    /* Hinweis */
+
+  --pro: #d5dae3;         /* Profi-Badge inaktiv (grau) */
+  --pro-on: #475569;      /* Profi-Badge aktiv (schiefer) */
+  --pro-on-fg: #ffffff;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+  --font: Lexend, system-ui, sans-serif;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);       /* Smartphone-Statusleiste */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dark-Mode: dunkelgrün, gelber Akzent (Klasse "dark" am <html>) */
+:root.dark {
+  --bg: #1d2a26;
+  --grid: #2b3c37;
+  --card: #26352f;
+  --ink: #f1efe4;
+  --mute: #a9b8b0;
+  --line: #41554d;
+  --soft: #30443c;
+
+  --acc: #f2c94c;
+  --acc-fg: #1d2a26;
+
+  --ok: #7be0a0;   --ok-bg: #1f4a35;
+  --bad: #ff9d8f;  --bad-bg: #5a2a26;
+  --warn: #f5b942; --warn-bg: #4a3a14;
+
+  --pro: #3a4a52;
+}
+
+
+/* ---------- 2. Reset & Typografie ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+h1, h2, p, ol { margin: 0; }
+button, input { font: inherit; color: inherit; margin: 0; }
+button { background: transparent; border: 0; cursor: pointer; }
+button:disabled, input:disabled { opacity: .6; cursor: not-allowed; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;                        /* Karo-Raster */
+}
+
+h1 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 800; }
+h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
+@media (min-width: 640px) { h1 { font-size: 1.5rem; line-height: 2rem; } }
+
+.mute  { color: var(--mute); }
+.small { font-size: .875rem; line-height: 1.25rem; }
+.xs    { font-size: .75rem;  line-height: 1rem; }
+.note  { margin-top: .5rem; }
+.lbl   { display: block; font-weight: 600; }
+.hidden { display: none !important; }
+
+:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+
+
+/* ---------- 3. Layout ---------- */
+
+.app { max-width: 42rem; margin: 0 auto; padding: .75rem; display: grid; gap: .75rem; }
+@media (min-width: 640px) { .app { padding: 1.5rem; } }
+
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+
+.row     { display: flex; flex-wrap: wrap; gap: .5rem; }
+.grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.stack   { display: grid; gap: 1rem; }
+.stack-sm { display: grid; gap: .5rem; }
+.app > *, .stack > *, .stack-sm > * { min-width: 0; }   /* verhindert seitliches Überlaufen */
+.foot    { text-align: center; padding-bottom: 1rem; }
+
+
+/* ---------- 4. Karten ---------- */
+
+.card {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+}
+.pad { padding: 1rem; }
+@media (min-width: 640px) { .pad-lg { padding: 1.5rem; } }
+
+
+/* ---------- 5. Buttons ---------- */
+
+.btn { border-radius: var(--radius-sm); font-weight: 600; }
+
+.btn-primary { background: var(--acc); color: var(--acc-fg); padding: .75rem 1.4rem; }
+
+.btn-ghost {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  padding: .65rem 1.1rem;
+}
+
+.btn-theme { padding: .5rem .75rem; font-size: 1.125rem; font-weight: 600; }
+
+
+/* ---------- 6. Badges (Teiler/Faktoren, Schalter, Stufen) ---------- */
+/* inaktiv = Standard, aktiv = .is-active, Profi = .chip--pro (grau) */
+
+.chip {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  min-width: 2.9rem;
+  padding: .55rem .7rem;
+  text-align: center;
+  transition: background .15s;
+}
+.chip small { display: block; font-size: .65rem; font-weight: 600; opacity: .8; line-height: 1; }
+.chip--grow { flex: 1; }
+
+.chip.is-active { background: var(--acc); color: var(--acc-fg); border-color: var(--acc); }
+
+.chip--pro { background: var(--pro); }
+.chip--pro.is-active { background: var(--pro-on); color: var(--pro-on-fg); border-color: var(--acc); }
+
+
+/* ---------- 7. Feedback ---------- */
+
+.feedback { border-radius: 12px; padding: 1rem; display: grid; gap: .5rem; }
+.feedback--ok   { background: var(--ok-bg);   color: var(--ok); }
+.feedback--bad  { background: var(--bad-bg);  color: var(--bad); }
+.feedback--hint { background: var(--warn-bg); color: var(--warn); }
+
+.fb-title  { font-size: 1.125rem; line-height: 1.75rem; font-weight: 800; }
+.fb-result { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; color: var(--ink); }
+.fb-note   { font-size: .875rem; font-weight: 600; }
+
+/* Kurzer Hinweis als Textzeile unter der Eingabe */
+.hint { text-align: center; font-size: .875rem; font-weight: 600; }
+.hint.is-bad  { color: var(--bad); }
+.hint.is-warn { color: var(--warn); }
+
+
+/* ---------- 8. Eingaben, Schieberegler, Fortschritt ---------- */
+
+.input {
+  width: 4rem;
+  text-align: center;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  padding: .45rem .2rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+input[type=range] { accent-color: var(--acc); width: 100%; }
+
+.progress { height: .5rem; border-radius: 999px; overflow: hidden; background: var(--line); }
+.progress > div { height: 100%; width: 0; background: var(--acc); }
+
+
+/* ---------- 9. Statistik-Kacheln ---------- */
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; text-align: center; }
+.stat { padding: .5rem; }
+.stat-value { font-size: 1.25rem; line-height: 1.75rem; font-weight: 800; }
+
+
+/* ---------- 10. Mathe-Darstellung ---------- */
+
+/* Aufgabenzeile */
+.expr {
+  font-weight: 600; font-size: 1.7rem; line-height: 1.2;
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  align-items: center; justify-content: center;
+  padding: .5rem 0;
+}
+.expr--sm { font-size: 1.3rem; padding: 0; }
+
+/* Bruch: <span class="frac"><span>Zähler</span><span>Nenner</span></span> */
+.frac {
+  display: inline-flex; flex-direction: column; align-items: center;
+  vertical-align: middle; line-height: 1.15; margin: 0 .12em; font-size: .9em;
+}
+.frac > span:first-child { border-bottom: 2px solid currentColor; padding: 0 .3em; }
+.frac > span:last-child  { padding: 0 .3em; }
+
+/* Gemischte Zahl: <span class="mixed"><b class="whole">2</b>…Bruch…</span> */
+.mixed { display: inline-flex; align-items: center; }
+.whole { margin-right: .1em; font-size: 1.1em; }
+
+/* Antwortzeile: Vorzeichen, ganze Zahl, Bruch mit Strich, Prüfen */
+.answer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem; }
+.answer-frac { display: flex; flex-direction: column; align-items: center; }
+.bar { height: 2px; background: currentColor; margin: .2rem 0; width: 100%; }
+
+/* Rechenweg */
+.steps-card { padding: 1rem; font-size: .875rem; line-height: 1.25rem; }
+.steps { list-style: decimal; padding-left: 1.25rem; }
+.steps li { margin: .4rem 0; }
+
+
+/* ---------- 11. Quiz: Antwortoptionen & große Zahl ---------- */
+
+.q-text { font-weight: 600; font-size: 1.125rem; line-height: 1.75rem; }
+
+/* Große Aufgabenzahl (Teilbarkeit) */
+.big {
+  font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums;
+  font-size: 3rem; line-height: 1; text-align: center; padding: .5rem 0;
+}
+@media (min-width: 640px) { .big { font-size: 3.75rem; } }
+
+/* Antwortoptionen:
+   .options--2    zwei Spalten (Ja/Nein, Wahr/Falsch)
+   .options--wide eine Spalte, ab 640px zwei Spalten */
+.options { display: grid; gap: .5rem; grid-template-columns: 1fr; }
+.options--2 { grid-template-columns: 1fr 1fr; }
+@media (min-width: 640px) { .options--wide { grid-template-columns: 1fr 1fr; } }
+
+.option {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: .8rem 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+.option:hover:not(:disabled) { border-color: var(--acc); }
+.option:disabled { opacity: 1; cursor: default; }
+.option.is-ok  { background: var(--ok-bg);  border-color: var(--ok);  color: var(--ok); }
+.option.is-bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+
+.fb-ex { color: var(--ink); }
+
+
+/* ---------- 12. Tabs, Regel-Referenz, Hilfsklassen ---------- */
+
+.chip--left { text-align: left; }
+.stack-md { display: grid; gap: .75rem; }
+.pad-sm { padding: .75rem; }
+
+/* Drei Spalten ab 640px (Stufenauswahl) */
+.grid-levels { display: grid; gap: .5rem; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .grid-levels { grid-template-columns: repeat(3, 1fr); } }
+
+/* Button volle Breite auf dem Handy, sonst nach Inhalt */
+.btn-block { width: 100%; }
+@media (min-width: 640px) { .btn-block { width: auto; justify-self: start; } }
+
+/* Kleines "Profi"-Schild neben Überschriften */
+.badge {
+  font-size: .65rem; font-weight: 600;
+  background: var(--pro);
+  padding: 1px 7px; border-radius: 99px; margin-left: .4rem;
+}
+
+/* Aufklappbare Regelkarten (<details class="card pad-sm">) */
+h3 { margin: 0; font-size: inherit; font-weight: 600; }
+.summary { font-weight: 600; cursor: pointer; padding: .25rem 0; }
+.ref { display: grid; gap: .75rem; margin-top: .5rem; font-size: .875rem; line-height: 1.625; }
+
+
+/* ---------- 13. <app-header> (Web Component) ---------- */
+/* Schlichte Kopfzeile: Zurück-Button | Titel | Hell/Dunkel-Schalter */
+
+app-header {
+  display: block;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: .75rem .75rem 0;
+}
+@media (min-width: 640px) { app-header { padding: 1.5rem 1.5rem 0; } }
+
+.portal-header { display: flex; align-items: center; gap: .75rem; }
+.portal-heading { flex: 1; min-width: 0; }
+.portal-title {
+  font-size: 1.25rem; line-height: 1.75rem; font-weight: 800;
+}
+@media (min-width: 640px) { .portal-title { font-size: 1.5rem; line-height: 2rem; } }
+
+/* Icon-Buttons (Zurück, Theme) */
+.portal-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-width: 2.75rem; min-height: 2.75rem; padding: .4rem .7rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.portal-btn:hover { border-color: var(--acc); }
+.portal-btn svg { flex: none; }
+
+/* Auf schmalen Displays nur der Pfeil */
+@media (max-width: 479px) { .portal-back-label { display: none; } }
+
+
+/* ---------- 14. <app-mode-toolbar> (Web Component) ---------- */
+/* Aufbau: Tabs (optional) + Karte mit Modus und Schwellenregler.
+   Tabs, Modus-Buttons und Regler nutzen .chip, .progress usw. aus den Abschnitten oben. */
+
+app-mode-toolbar { display: grid; gap: .75rem; }
+.toolbar-tabs .chip { min-height: 2.9rem; }
+.toolbar-controls .progress { margin-top: .25rem; }
+
+
+/* ---------- 15. Umrechnen-App (Bruch ↔ Dezimalzahl) ---------- */
+
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.grid-3 .chip { font-size: .875rem; padding-inline: .4rem; }
+
+.row--between { justify-content: space-between; align-items: center; }
+.row--between h2 { margin: 0; }
+.row--nowrap { flex-wrap: nowrap; }
+
+/* Kleine Schilder (Aufgabentyp, Kategorien-Statistik) */
+.pill {
+  display: inline-block; background: var(--soft);
+  border-radius: 999px; padding: .15rem .8rem;
+  font-weight: 700; font-size: .9rem; text-align: center;
+}
+
+/* Große Aufgabe: Bruch = ? bzw. Dezimalzahl = Bruch */
+.big--flex { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+
+/* Periode: Überstrich in Warnfarbe */
+.per { text-decoration: overline; text-decoration-thickness: .12em; color: var(--warn); font-weight: 700; }
+
+/* Eingaben */
+.input--fill { flex: 1 1 0; width: 0; min-width: 0; font-size: 1.5rem; text-align: left; padding: .45rem .7rem; }
+.input--num { width: 100%; font-size: 1.5rem; }
+.answer-frac--box { width: 9rem; }
+.chip--key { min-height: 2.75rem; font-size: 1.25rem; padding: .3rem .7rem; }
+.chip--text { font-size: 1rem; white-space: nowrap; }
+.prev { min-height: 2rem; font-size: 1.125rem; }
+.check { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+.check input { width: 1.25rem; height: 1.25rem; accent-color: var(--acc); }
+
+/* Feedback-Platz: leer = ohne Lücke */
+.fb-slot:empty { display: none; }
+.lead { font-size: 1.25rem; line-height: 1.75rem; }
+.base { font-size: 1rem; }
+
+/* Schriftliche Division: markierter Rest = Beginn der Periode */
+.rows {
+  font-variant-numeric: tabular-nums; font-size: .95rem;
+  border-left: 3px solid var(--line); padding-left: .75rem; margin: .5rem 0;
+}
+.rows div { padding: .05rem .4rem; }
+.rows .hl { background: var(--soft); font-weight: 700; border-radius: .3rem; }
+
+/* Statistik mit vier Werten */
+.stats--4 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .stats--4 { grid-template-columns: repeat(4, 1fr); } }
+.stat-value--lg { font-size: 1.875rem; line-height: 2.25rem; }
+
+.progress > div { transition: width .3s; }
+
+
+/* ---------- 16. Rechenweg-Kette & Schritt-Eingaben ---------- */
+
+/* Abgeschlossene Schritte: grüne Check-Zeilen von oben nach unten */
+.chain { display: grid; gap: .4rem; }
+.chain:empty { display: none; }
+.chain-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  background: var(--ok-bg); color: var(--ok);
+  border-radius: var(--radius-sm); padding: .5rem .8rem; font-weight: 600;
+}
+.chain-row .chain-expr { color: var(--ink); }
+
+/* Brucheingabe: [Vorzeichen] [ganz] Zähler/Nenner */
+.fin { display: flex; align-items: center; gap: .4rem; }
+.op { font-size: 1.5rem; font-weight: 600; }
+
+</style>
+<script>
+/* =========================================================
+   shared/components.js – Web Components für das Mathe-Portal
+   Enthält:
+   - <app-header>        Kopfleiste: Zurück-Button, Titel, Hell/Dunkel-Schalter
+   - <app-mode-toolbar>  Tabs (Üben/Regeln), Manuell/Adaptiv, Schwellenregler
+
+   Einbinden (im <head>, ohne defer, damit der Dark-Mode vor dem
+   ersten Zeichnen gesetzt wird):
+   <link rel="stylesheet" href="../../shared/style.css">
+   <script src="../../shared/components.js">   (Tag-Ende wie üblich)
+
+   Die Komponenten nutzen kein Shadow DOM, damit shared/style.css
+   (Farbvariablen, .chip, .card …) direkt greift.
+   ========================================================= */
+(function () {
+  'use strict';
+
+  /* ---------- Theme (Hell/Dunkel), geteilt über localStorage ---------- */
+  const KEY = 'theme';                       // gleicher Schlüssel wie in den bisherigen Apps
+  const root = document.documentElement;
+
+  function stored() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function currentTheme() { return root.classList.contains('dark') ? 'dark' : 'light'; }
+
+  function apply(theme) {
+    root.classList.toggle('dark', theme === 'dark');
+    root.style.colorScheme = theme;
+    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+  }
+  function setTheme(theme) {
+    try { localStorage.setItem(KEY, theme); } catch (e) {}
+    apply(theme);
+  }
+
+  // Beim Laden: gespeicherte Wahl, sonst Systemeinstellung
+  apply(stored() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  // Wechsel in einem anderen Browser-Tab übernehmen
+  addEventListener('storage', function (e) { if (e.key === KEY && e.newValue) apply(e.newValue); });
+
+  /* ---------- Hilfsfunktionen ---------- */
+  // Attribut als Schalter lesen: fehlt es, gilt def; "false" schaltet aus
+  function flag(el, name, def) {
+    return el.hasAttribute(name) ? el.getAttribute(name) !== 'false' : def;
+  }
+  function svg(path) {
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+  }
+  const ICON = {
+    back: '<path d="M15 6l-6 6 6 6"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+  };
+  function refs(el) {
+    const r = {};
+    el.querySelectorAll('[data-ref]').forEach(function (n) { r[n.dataset.ref] = n; });
+    return r;
+  }
+
+  /* =========================================================
+     <app-header>
+     Attribute:
+       title       Seitentitel
+       subtitle    kleine Zeile unter dem Titel (optional)
+       back-url    Ziel des Zurück-Buttons, z. B. "../../"
+                   "history" = Schritt zurück im Browserverlauf
+                   fehlt das Attribut, wird der Button ausgeblendet
+       back-label  Beschriftung des Buttons (Standard: "Zurück")
+     Hinweis: Das title-Attribut wird intern übernommen und vom Element
+     entfernt, damit der Browser keinen Tooltip über der ganzen Leiste zeigt.
+     ========================================================= */
+  class AppHeader extends HTMLElement {
+    static get observedAttributes() { return ['title', 'subtitle', 'back-url', 'back-label']; }
+
+    get heading() { return this._title || ''; }
+
+    connectedCallback() {
+      if (!this._ready) {
+        this.innerHTML =
+          '<div class="portal-header">' +
+            '<a class="portal-btn portal-back" data-ref="back" href="#">' + svg(ICON.back) +
+              '<span class="portal-back-label" data-ref="backLabel"></span></a>' +
+            '<div class="portal-heading">' +
+              '<h1 class="portal-title" data-ref="title"></h1>' +
+              '<p class="portal-subtitle mute small" data-ref="sub"></p></div>' +
+            '<button type="button" class="portal-btn portal-theme" data-ref="theme"></button>' +
+          '</div>';
+        this._r = refs(this);
+        this._r.back.addEventListener('click', (e) => {
+          if (this.getAttribute('back-url') === 'history') { e.preventDefault(); history.back(); }
+        });
+        this._r.theme.addEventListener('click', () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark'));
+        this._ready = true;
+      }
+      this._onTheme = () => this._renderTheme();
+      document.addEventListener('themechange', this._onTheme);
+      this._render();
+    }
+
+    disconnectedCallback() { document.removeEventListener('themechange', this._onTheme); }
+
+    attributeChangedCallback() { if (this._ready) this._render(); }
+
+    _render() {
+      const r = this._r;
+      const t = this.getAttribute('title');
+      if (t !== null) { this._title = t; this.removeAttribute('title'); }   // kein Tooltip
+      r.title.textContent = this._title || '';
+
+      const sub = this.getAttribute('subtitle') || '';
+      r.sub.textContent = sub;
+      r.sub.classList.toggle('hidden', !sub);
+
+      const url = this.getAttribute('back-url');
+      const label = this.getAttribute('back-label') || 'Zurück';
+      r.back.classList.toggle('hidden', !url);
+      r.back.href = !url || url === 'history' ? '#' : url;
+      r.backLabel.textContent = label;
+      r.back.setAttribute('aria-label', label);
+
+      this._renderTheme();
+    }
+
+    _renderTheme() {
+      const dark = currentTheme() === 'dark';
+      const b = this._r.theme;
+      b.innerHTML = svg(dark ? ICON.sun : ICON.moon);            // Sonne = zu Hell wechseln
+      b.setAttribute('aria-label', dark ? 'Zum hellen Design wechseln' : 'Zum dunklen Design wechseln');
+    }
+  }
+
+  /* =========================================================
+     <app-mode-toolbar>
+     Attribute (ein-/ausschalten mit "true"/"false"):
+       show-tabs      Tab-Umschalter Üben / Regeln        (Standard: false)
+       show-mode      Manuell/Adaptiv-Umschalter          (Standard: true)
+       show-slider    Schwellenregler, nur im Modus adaptiv sichtbar (Standard: true)
+       tab            "practice" (Standard) oder "rules"
+       mode           "manual" (Standard) oder "adaptive"
+       threshold      richtige Aufgaben in Folge bis zum Aufstieg (Standard: 5)
+       min, max       Bereich des Reglers (Standard: 3 bis 7)
+       label-practice, label-rules, label-manual, label-adaptive   eigene Beschriftungen
+
+     Ereignisse (bubbeln, nur bei Bedienung durch die Person):
+       tabchange        detail: { tab }
+       modechange       detail: { mode }
+       thresholdchange  detail: { value }
+
+     Eigenschaften: .tab  .mode  .threshold  (lesen und setzen)
+     Methode:       .setProgress(run, infoText)  füllt den Fortschrittsbalken
+                    (run richtige Aufgaben in Folge, bezogen auf .threshold)
+     ========================================================= */
+  let uid = 0;
+
+  class AppModeToolbar extends HTMLElement {
+    static get observedAttributes() {
+      return ['show-tabs', 'show-mode', 'show-slider', 'tab', 'mode', 'threshold', 'min', 'max',
+              'label-practice', 'label-rules', 'label-manual', 'label-adaptive'];
+    }
+
+    get tab() { return this.getAttribute('tab') === 'rules' ? 'rules' : 'practice'; }
+    set tab(v) { this.setAttribute('tab', v); }
+    get mode() { return this.getAttribute('mode') === 'adaptive' ? 'adaptive' : 'manual'; }
+    set mode(v) { this.setAttribute('mode', v); }
+    get min() { const v = parseInt(this.getAttribute('min'), 10); return isNaN(v) ? 3 : v; }
+    get max() { const v = parseInt(this.getAttribute('max'), 10); return isNaN(v) ? 7 : v; }
+    get threshold() {
+      const v = parseInt(this.getAttribute('threshold'), 10);
+      return Math.min(this.max, Math.max(this.min, isNaN(v) ? 5 : v));
+    }
+    set threshold(v) { this.setAttribute('threshold', v); }
+
+    connectedCallback() {
+      if (!this._ready) {
+        const id = 'toolbar-range-' + (++uid);
+        this.innerHTML =
+          '<nav class="toolbar-tabs grid-2" role="tablist" data-ref="tabs">' +
+            '<button type="button" class="chip" role="tab" data-tab="practice" data-ref="tabP"></button>' +
+            '<button type="button" class="chip" role="tab" data-tab="rules" data-ref="tabR"></button>' +
+          '</nav>' +
+          '<section class="card pad stack toolbar-controls" data-ref="controls">' +
+            '<div data-ref="modeBox"><h2>Modus</h2><div class="row">' +
+              '<button type="button" class="chip chip--grow" data-mode="manual" data-ref="mManual"></button>' +
+              '<button type="button" class="chip chip--grow" data-mode="adaptive" data-ref="mAdaptive"></button>' +
+            '</div></div>' +
+            '<div class="stack-sm" data-ref="sliderBox">' +
+              '<label class="lbl" for="' + id + '">Aufstieg nach <span data-ref="val"></span> richtigen Aufgaben in Folge</label>' +
+              '<input id="' + id + '" type="range" step="1" data-ref="range">' +
+              '<div class="progress"><div data-ref="bar"></div></div>' +
+              '<p class="mute small" data-ref="info"></p>' +
+            '</div>' +
+          '</section>';
+        this._r = refs(this);
+        const r = this._r;
+
+        r.tabs.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-tab]');
+          if (!b || b.dataset.tab === this.tab) return;
+          this.tab = b.dataset.tab;
+          this._emit('tabchange', { tab: this.tab });
+        });
+        r.modeBox.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-mode]');
+          if (!b || b.dataset.mode === this.mode) return;
+          this.mode = b.dataset.mode;
+          this._emit('modechange', { mode: this.mode });
+        });
+        r.range.addEventListener('input', () => {
+          this.threshold = r.range.value;
+          this._emit('thresholdchange', { value: this.threshold });
+        });
+        this._ready = true;
+      }
+      this._render();
+    }
+
+    attributeChangedCallback() { if (this._ready) this._render(); }
+
+    setProgress(run, info) {
+      this._run = run;
+      if (info != null) this._r.info.textContent = info;
+      if (this._ready) this._paintBar();
+    }
+
+    _emit(name, detail) { this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true })); }
+
+    _paintBar() {
+      this._r.bar.style.width = Math.min(100, (this._run || 0) / this.threshold * 100) + '%';
+    }
+
+    _render() {
+      const r = this._r;
+      const showTabs = flag(this, 'show-tabs', false);
+      const showMode = flag(this, 'show-mode', true);
+      const sliderOn = flag(this, 'show-slider', true) && this.mode === 'adaptive';
+
+      r.tabs.classList.toggle('hidden', !showTabs);
+      r.modeBox.classList.toggle('hidden', !showMode);
+      r.sliderBox.classList.toggle('hidden', !sliderOn);
+      r.controls.classList.toggle('hidden', !showMode && !sliderOn);
+
+      r.tabP.textContent = this.getAttribute('label-practice') || 'Üben / Training';
+      r.tabR.textContent = this.getAttribute('label-rules') || 'Regeln & Herleitung';
+      r.mManual.textContent = this.getAttribute('label-manual') || 'Manuell';
+      r.mAdaptive.textContent = this.getAttribute('label-adaptive') || 'Adaptiv';
+
+      r.tabs.querySelectorAll('[data-tab]').forEach((b) => {
+        const on = b.dataset.tab === this.tab;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', String(on));
+      });
+      r.modeBox.querySelectorAll('[data-mode]').forEach((b) => {
+        const on = b.dataset.mode === this.mode;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+
+      r.range.min = this.min;
+      r.range.max = this.max;
+      r.range.value = this.threshold;
+      r.val.textContent = this.threshold;
+      this._paintBar();
+    }
+  }
+
+  /* ---------- Registrierung ---------- */
+  if (!customElements.get('app-header')) customElements.define('app-header', AppHeader);
+  if (!customElements.get('app-mode-toolbar')) customElements.define('app-mode-toolbar', AppModeToolbar);
+
+  // Kleine API für eigene Skripte: MathPortal.theme.get() / .set('dark') / .toggle()
+  window.MathPortal = {
+    theme: {
+      get: currentTheme,
+      set: setTheme,
+      toggle: function () { setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); }
+    }
+  };
+})();
+
+</script>
+<!-- VORSCHAU-ENDE -->
+</head>
+<body>
+
+<app-header title="Bruchrechnen" subtitle="Kürzen, Erweitern, Multiplizieren und Dividieren" back-url="../../"></app-header>
+
+<main class="app">
+
+  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="manual" threshold="5"></app-mode-toolbar>
+
+  <section class="card pad stack" aria-label="Einstellungen">
+    <div>
+      <h2>Zahlenraum: erlaubte Faktoren</h2>
+      <div id="factors" class="stack-sm">
+        <div><p class="mute small">Basis-Faktoren</p><div id="fBase" class="row"></div></div>
+        <div><p class="mute small">Standard-Faktoren</p><div id="fStd" class="row"></div></div>
+        <div><p class="mute small">Profi-Primfaktoren</p><div id="fPro" class="row"></div></div>
+      </div>
+      <p class="mute xs note">Zähler und Nenner entstehen aus ein bis zwei dieser Faktoren, z. B. 4·7 = 28.</p>
+    </div>
+    <div>
+      <h2>Zusatz-Schalter</h2>
+      <div id="tg" class="row"></div>
+      <p class="mute xs note">Gemischte Zahlen wirken ab Stufe 2, negative Vorzeichen in allen Stufen.</p>
+    </div>
+    <div id="manualBox"><h2>Stufe</h2><div id="lvls" class="grid-2"></div></div>
+  </section>
+
+  <section class="stats">
+    <div class="card stat"><div class="mute xs">Punkte</div><div id="sScore" class="stat-value">0</div></div>
+    <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
+    <div class="card stat"><div class="mute xs">Fehlerfrei</div><div id="sRate" class="stat-value">0/0</div></div>
+  </section>
+
+  <section class="card pad pad-lg stack" aria-label="Aufgabe">
+    <div id="qMeta" class="mute small"></div>
+    <p id="prompt" class="q-text"></p>
+    <div id="expr" class="expr"></div>
+    <div id="chain" class="chain" aria-label="Rechenweg"></div>
+
+    <div id="stepBox" class="stack-sm">
+      <h2 id="stepTitle"></h2>
+      <p id="stepHint" class="mute small"></p>
+      <div id="stepIn"></div>
+      <div class="row">
+        <button id="chk" class="btn btn-primary" type="button">Prüfen</button>
+        <button id="noCancel" class="btn btn-ghost" type="button" hidden>Bereits vollständig gekürzt</button>
+        <button id="show" class="btn btn-ghost" type="button">Lösung zeigen</button>
+      </div>
+    </div>
+
+    <div id="fb" class="fb-slot" aria-live="polite"></div>
+    <button id="next" class="btn btn-primary btn-block" type="button" hidden>Nächste Aufgabe</button>
+  </section>
+
+  <footer class="foot mute xs">Tipp: Mit „+/−“ wechselst du das Vorzeichen. Enter prüft die Eingabe, danach geht es mit Enter weiter. Ein Schritt zählt erst, wenn er vollständig gekürzt ist.</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const tb = $("tb");
+const M = "−";
+const BASE = [2, 3, 5], STD = [4, 6, 7, 8, 9, 10], PRO = [11, 13, 17, 19];
+const LV = ["Kürzen & Erweitern", "Kreuzkürzen", "Ungekürzt multiplizieren", "Dividieren"];
+const S = {pool: new Set(BASE), neg: false, mix: false, mode: "manual", level: 1, thr: tb.threshold,
+  score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0, task: null, steps: [], step: 0, errs: 0, done: false, chain: []};
+
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+const ok = () => ({k: "ok"}), bad = m => ({k: "bad", msg: m}), hint = m => ({k: "hint", msg: m});
+const V = f => ({n: f.s * (f.w * f.d + f.n), d: f.d});
+const same = (x, y) => x.n * y.d === y.n * x.d;
+const imp = o => ({n: o.w * o.d + o.n, d: o.d});
+
+/* ---------- Darstellung ---------- */
+const frac = (n, d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+const num = f => f.n ? (f.w ? `<span class="mixed"><b class="whole">${f.w}</b>${frac(f.n, f.d)}</span>` : frac(f.n, f.d)) : String(f.w);
+const fmt = (f, par) => f.s < 0 ? (par ? `(${M}${num(f)})` : `${M}${num(f)}`) : num(f);
+const fmtOps = (fs, op) => fs.map((f, i) => i ? `${op} ${fmt(f, true)}` : fmt(f)).join(" ");
+
+/* ---------- Aufgaben-Generator ---------- */
+// Zahl aus 1–2 erlaubten Faktoren (0 = kein Treffer)
+function nf(pool, lo, hi) {
+  if (lo <= 1 && Math.random() < .12) return 1;
+  for (let i = 0; i < 40; i++) { let v = 1; for (let j = rnd(1, 2); j > 0; j--) v *= pick(pool); if (v >= lo && v <= hi) return v; }
+  return 0;
+}
+// Operand: gekürzter echter Bruch, bei unred = true mit einem Faktor erweitert
+function operand(pool, unred) {
+  const d0 = nf(pool, 2, 36), n0 = nf(pool, 1, 35);
+  if (!d0 || !n0 || n0 >= d0 || gcd(n0, d0) !== 1) return null;
+  let k = 1;
+  if (unred && Math.random() < .85) { k = nf(pool, 2, 9); if (!k || d0 * k > 60) return null; }
+  return {s: 1, w: 0, n: n0 * k, d: d0 * k};
+}
+function build(level, pool) {
+  for (let t = 0; t < 900; t++) {
+    const sg = S.neg && Math.random() < .4 ? -1 : 1;
+    if (level === 1) {
+      const n0 = nf(pool, 1, 35), d0 = nf(pool, 2, 40);
+      if (!n0 || !d0 || gcd(n0, d0) !== 1 || (n0 >= d0 && Math.random() < .8)) continue;
+      if (Math.random() < .5) { const k = nf(pool, 2, 9); if (!k || n0 * k > 99 || d0 * k > 99) continue; return {level, kind: "red", s: sg, n0, d0, n: n0 * k, d: d0 * k}; }
+      const f = pick(pool); if (d0 * f > 99 || n0 * f > 99) continue;
+      return {level, kind: "ext", s: sg, n0, d0, f};
+    }
+    const o = [operand(pool, level >= 3), operand(pool, level >= 3)];
+    if (!o[0] || !o[1]) continue;
+    if (S.mix) { o.forEach(x => { if (Math.random() < .45) x.w = rnd(1, 3); }); if (!o[0].w && !o[1].w && Math.random() < .8) pick(o).w = rnd(1, 3); }
+    if (S.neg) o.forEach(x => { if (Math.random() < .4) x.s = -1; });
+    const P = imp(o[0]), Q = imp(o[1]), div = level === 4;
+    const a = P.n, b = P.d, c = div ? Q.d : Q.n, d = div ? Q.n : Q.d;        // a/b · c/d
+    if (Math.max(a, b, c, d) > 150) continue;
+    const g1 = gcd(a, b), g2 = gcd(c, d), inner = g1 > 1 || g2 > 1;
+    const a1 = a / g1, b1 = b / g1, c1 = c / g2, d1 = d / g2, cross = gcd(a1, d1) > 1 || gcd(c1, b1) > 1;
+    if (level === 2 && (inner || !cross)) continue;
+    if (level >= 3 && (!inner || (!cross && Math.random() < .7))) continue;
+    return {level, ops: o, div, a, b, c, d};
+  }
+  return null;
+}
+
+/* ---------- Kürzen (Kreuz & innen) ---------- */
+function cancelForm({a, b, c, d}) {
+  let g = gcd(a, b); a /= g; b /= g;
+  g = gcd(c, d); c /= g; d /= g;
+  g = gcd(a, d); a /= g; d /= g;
+  g = gcd(c, b); c /= g; b /= g;
+  return {a, b, c, d};
+}
+function cancelCheck([f1, f2], B, sp) {
+  const n1 = f1.n, d1 = f1.d, n2 = f2.n, d2 = f2.d;
+  if (n1 * n2 * B.b * B.d !== B.a * B.c * d1 * d2) return bad("Der Wert des Produkts hat sich verändert. Beim Kürzen teilst du Zähler und Nenner nur durch gemeinsame Teiler. Über Kreuz darf ein Zähler mit dem Nenner des anderen Bruchs gekürzt werden.");
+  if (f1.s * f2.s !== sp) return bad("Der Betrag stimmt, aber das Vorzeichen nicht. Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus.");
+  if (B.a % n1 || B.b % d1 || B.c % n2 || B.d % d2) return bad("Der Wert stimmt, aber so wurde nicht gekürzt. Es darf nur durch gemeinsame Teiler geteilt werden. Bleib bei den Zahlen der Aufgabe und multipliziere noch nicht aus.");
+  const inner = gcd(n1, d1) > 1 || gcd(n2, d2) > 1, cross = gcd(n1, d2) > 1 || gcd(n2, d1) > 1;
+  if (inner && cross) return hint("Mathematisch richtig, aber noch nicht vollständig gekürzt: Weder innerhalb der Brüche noch über Kreuz ist alles erledigt!");
+  if (inner) return hint("Mathematisch richtig, aber ein Bruch lässt sich noch kürzen: Zähler und Nenner desselben Bruchs haben noch einen gemeinsamen Teiler.");
+  if (cross) return hint("Mathematisch richtig, aber du sollst besser vorher über Kreuz kürzen! Ein Zähler und der Nenner des anderen Bruchs haben noch einen gemeinsamen Teiler.");
+  return ok();
+}
+function finalCheck(f, R) {
+  const v = V(f);
+  if (!same(v, {n: R.s * R.n, d: R.d})) return Math.abs(v.n) * R.d === R.n * v.d
+    ? bad("Der Betrag stimmt, aber das Vorzeichen nicht. Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus.")
+    : bad("Das Ergebnis stimmt nicht. Multipliziere Zähler mal Zähler und Nenner mal Nenner der gekürzten Brüche und achte auf das Vorzeichen.");
+  if (f.w && f.n >= f.d) return hint("Der Wert stimmt, aber der Bruchteil einer gemischten Zahl muss kleiner als 1 sein.");
+  if (f.n && gcd(f.n, f.d) > 1) return hint(`Mathematisch richtig, aber noch nicht vollständig gekürzt (gemeinsamer Teiler ${gcd(f.n, f.d)}).`);
+  return ok();
+}
+
+/* ---------- Schritte je Aufgabe ---------- */
+function stepsOf(t) {
+  const st = [];
+  if (t.level === 1) {
+    const s = t.s;
+    if (t.kind === "red") st.push({label: "Gekürzt", type: "frac", title: "Kürze den Bruch vollständig", hint: "Teile Zähler und Nenner durch ihren größten gemeinsamen Teiler.",
+      ans: () => [{s, w: 0, n: t.n0, d: t.d0}],
+      check([f]) {
+        if (!same(V(f), {n: s * t.n0, d: t.d0})) return f.n * t.d0 === t.n0 * f.d ? bad("Der Betrag stimmt, aber das Vorzeichen nicht.") : bad("Der Wert stimmt nicht mehr. Beim Kürzen teilst du Zähler und Nenner durch dieselbe Zahl.");
+        const g = gcd(f.n, f.d);
+        return g > 1 ? hint(`Mathematisch richtig, aber noch nicht vollständig gekürzt! Zähler und Nenner haben noch den gemeinsamen Teiler ${g}.`) : ok();
+      }});
+    else st.push({label: `Erweitert mit ${t.f}`, type: "frac", title: `Erweitere den Bruch mit ${t.f}`, hint: `Multipliziere Zähler und Nenner jeweils mit ${t.f}.`,
+      ans: () => [{s, w: 0, n: t.n0 * t.f, d: t.d0 * t.f}],
+      check([f]) {
+        if (!same(V(f), {n: s * t.n0, d: t.d0})) return f.n * t.d0 === t.n0 * f.d ? bad("Der Betrag stimmt, aber das Vorzeichen nicht.") : bad(`Beim Erweitern multiplizierst du Zähler und Nenner mit demselben Faktor, hier ${t.f}.`);
+        if (f.n !== t.n0 * t.f || f.d !== t.d0 * t.f) return hint(`Der Wert stimmt, aber du solltest mit ${t.f} erweitern: ${t.n0}·${t.f} im Zähler und ${t.d0}·${t.f} im Nenner.`);
+        return ok();
+      }});
+    return st;
+  }
+  const {a, b, c, d} = t, B = {a, b, c, d}, sp = t.ops[0].s * t.ops[1].s;
+  if (t.ops.some(o => o.w)) st.push({label: "In unechte Brüche umgewandelt", type: "prod", op: t.div ? ":" : "·", title: "Gemischte Zahlen in unechte Brüche umwandeln",
+    hint: "Ganze · Nenner + Zähler, der Nenner bleibt gleich. Noch nicht kürzen!",
+    ans: () => t.ops.map(o => ({s: o.s, w: 0, ...imp(o)})),
+    check(fs) {
+      for (let i = 0; i < 2; i++) {
+        const o = t.ops[i], p = imp(o), f = fs[i];
+        if (f.n === p.n && f.d === p.d) { if (f.s !== o.s) return bad(`Das Vorzeichen des ${i + 1}. Bruchs stimmt nicht.`); continue; }
+        if (same(V(f), {n: o.s * p.n, d: p.d})) return hint(`Der Wert des ${i + 1}. Bruchs stimmt, aber hier wird nur umgewandelt, noch nicht gekürzt: Der Nenner bleibt ${p.d}.`);
+        return bad(o.w ? `Der ${i + 1}. Bruch stimmt nicht. Rechne Ganze mal Nenner plus Zähler: ${o.w}·${o.d}+${o.n}. Der Nenner bleibt ${o.d}.` : `Der ${i + 1}. Bruch ist schon ein einfacher Bruch und bleibt unverändert.`);
+      }
+      return ok();
+    }});
+  if (t.div) st.push({label: "Kehrwert gebildet", type: "prod", op: "·", title: "Mit dem Kehrwert multiplizieren", hint: "Aus „:“ wird „·“ und der zweite Bruch wird umgedreht. Noch nicht kürzen!",
+    ans: () => [{s: t.ops[0].s, w: 0, n: a, d: b}, {s: t.ops[1].s, w: 0, n: c, d}],
+    check([f1, f2]) {
+      const s1 = t.ops[0].s, s2 = t.ops[1].s;
+      if (f1.n === a && f1.d === b && f2.n === c && f2.d === d) return f1.s === s1 && f2.s === s2 ? ok() : bad("Die Zahlen stimmen, aber ein Vorzeichen nicht: Beim Kehrwert bleibt das Vorzeichen erhalten.");
+      if (f1.n === b && f1.d === a) return bad("Nur der zweite Bruch (der Divisor) wird umgedreht. Der erste bleibt unverändert.");
+      if (f2.n === d && f2.d === c) return bad("Beim Dividieren multiplizierst du mit dem Kehrwert: Der zweite Bruch muss umgedreht werden.");
+      if (f1.s * f2.s === s1 * s2 && f1.n * f2.n * b * d === a * c * f1.d * f2.d) return hint("Mathematisch gleichwertig, aber in diesem Schritt wird nur der Kehrwert gebildet. Gekürzt wird erst im nächsten Schritt.");
+      return bad("Das passt nicht. Schreibe a/b : c/d um in a/b · d/c.");
+    }});
+  const titles = {2: "Über Kreuz kürzen", 3: "Alles kürzen: innerhalb der Brüche und über Kreuz", 4: "Alles kürzen: innerhalb der Brüche und über Kreuz"};
+  const hints = {2: "Kürze vor dem Ausrechnen: Ein Zähler und der Nenner des anderen Bruchs dürfen durch denselben Teiler geteilt werden. Trage beide Brüche gekürzt ein. Geht nichts mehr, klicke „Bereits vollständig gekürzt“.",
+    3: "Kürze zuerst innerhalb jedes Bruchs, dann über Kreuz, bis nichts mehr geht. Trage beide Brüche vollständig gekürzt ein.",
+    4: "Kürze innerhalb der Brüche und über Kreuz, bis nichts mehr geht. Trage beide Brüche vollständig gekürzt ein."};
+  const cf = cancelForm(B), Rn = cf.a * cf.c, Rd = cf.b * cf.d, g = gcd(Rn, Rd), R = {s: sp, n: Rn / g, d: Rd / g};
+  st.push({label: "Vollständig gekürzt", type: "prod", op: "·", cancel: true, title: titles[t.level], hint: hints[t.level],
+    ans: () => [{s: sp, w: 0, n: cf.a, d: cf.b}, {s: 1, w: 0, n: cf.c, d: cf.d}],
+    none: () => gcd(a, b) === 1 && gcd(c, d) === 1 && gcd(a, d) === 1 && gcd(c, b) === 1,
+    check: fs => cancelCheck(fs, B, sp)});
+  st.push({label: "Ergebnis", type: "frac", whole: S.mix, title: "Endergebnis", hint: "Multipliziere Zähler mal Zähler und Nenner mal Nenner. Das Ergebnis soll vollständig gekürzt sein" + (S.mix ? " (als Bruch oder als gemischte Zahl)." : "."),
+    ans: () => [{s: R.s, w: 0, n: R.n, d: R.d}], check: ([f]) => finalCheck(f, R)});
+  return st;
+}
+
+/* ---------- Eingabefelder ---------- */
+const finHTML = whole => `<div class="fin">${S.neg ? '<button type="button" class="chip fin-sign" data-s="+" aria-label="Vorzeichen wechseln">+</button>' : ""}${whole ? '<input class="input fin-w" inputmode="numeric" placeholder="ganz" aria-label="Ganze Zahl" autocomplete="off">' : ""}<div class="answer-frac"><input class="input fin-n" inputmode="numeric" placeholder="Zähler" aria-label="Zähler" autocomplete="off"><div class="bar"></div><input class="input fin-d" inputmode="numeric" placeholder="Nenner" aria-label="Nenner" autocomplete="off"></div></div>`;
+function readFin(el) {
+  const sg = el.querySelector(".fin-sign"), s = sg && sg.dataset.s === "-" ? -1 : 1;
+  const v = c => { const i = el.querySelector(c); return i ? i.value.trim() : ""; };
+  const w = v(".fin-w"), n = v(".fin-n"), d = v(".fin-d");
+  if (!/^\d*$/.test(w) || !/^\d*$/.test(n) || !/^\d*$/.test(d)) return {err: "Bitte nur ganze Zahlen (Ziffern) eintragen. Das Minus setzt du mit dem Knopf +/−."};
+  if (w !== "" && n === "" && d === "") return {s, w: +w, n: 0, d: 1};
+  if (n === "" || d === "") return {err: "Trage Zähler und Nenner ein."};
+  if (+d === 0) return {err: "Der Nenner darf nicht 0 sein."};
+  if (+n === 0 && w === "") return {err: "Der Zähler darf nicht 0 sein."};
+  return {s, w: +w || 0, n: +n, d: +d};
+}
+
+/* ---------- Ablauf ---------- */
+function show(kind, html) { $("fb").innerHTML = `<div class="feedback feedback--${kind}"><p>${html}</p></div>`; }
+function renderChain() {
+  $("chain").innerHTML = S.chain.map(r => `<div class="chain-row"><b aria-hidden="true">✔</b><span>${r.label}:</span><span class="chain-expr">${r.expr}</span></div>`).join("");
+}
+function renderStep() {
+  const st = S.steps[S.step];
+  $("stepTitle").textContent = `Schritt ${S.step + 1} von ${S.steps.length}: ${st.title}`;
+  $("stepHint").textContent = st.hint || "";
+  $("stepIn").innerHTML = `<div class="answer">${st.type === "frac" ? finHTML(st.whole) : finHTML(false) + `<span class="op">${st.op}</span>` + finHTML(false)}</div>`;
+  $("noCancel").hidden = !st.cancel;
+  $("fb").innerHTML = "";
+  const i = $("stepIn").querySelector("input"); if (i) i.focus({preventScroll: true});
+}
+function newTask() {
+  let t = build(S.level, [...S.pool]), relax = false;
+  if (!t) { t = build(S.level, BASE); relax = true; }
+  S.task = t; S.steps = stepsOf(t); S.step = 0; S.errs = 0; S.done = false; S.chain = [];
+  $("qMeta").textContent = `Stufe ${S.level}: ${LV[S.level - 1]}` + (relax ? " · mit diesen Faktoren ist die Stufe nicht möglich, Basis-Faktoren wurden verwendet" : "");
+  if (t.level === 1) {
+    $("prompt").textContent = t.kind === "red" ? "Kürze den Bruch vollständig:" : `Erweitere den Bruch mit ${t.f}:`;
+    $("expr").innerHTML = fmt({s: t.s, w: 0, n: t.kind === "red" ? t.n : t.n0, d: t.kind === "red" ? t.d : t.d0}) + " = ?";
+  } else {
+    $("prompt").textContent = t.level === 2 ? "Multipliziere. Kürze zuerst über Kreuz, dann rechne aus:"
+      : t.level === 3 ? "Multipliziere. Kürze zuerst alles (innerhalb der Brüche und über Kreuz), dann rechne aus:"
+      : "Dividiere. Bilde den Kehrwert, kürze vollständig und rechne aus:";
+    $("expr").innerHTML = fmtOps(t.ops, t.div ? ":" : "·") + " = ?";
+  }
+  renderChain(); renderStep();
+  $("stepBox").hidden = false; $("next").hidden = true;
+}
+function advance(st, fs) {
+  const expr = st.type === "frac" ? fmt(fs[0]) : fmtOps(fs, st.op);
+  S.chain.push({label: `Schritt ${S.step + 1} · ${st.label}`, expr});
+  S.step++; renderChain();
+  if (S.step >= S.steps.length) finish(); else renderStep();
+}
+function check() {
+  if (S.done) return;
+  const st = S.steps[S.step], fs = [...$("stepIn").querySelectorAll(".fin")].map(readFin), e = fs.find(f => f.err);
+  if (e) return show("hint", e.err);
+  const r = st.check(fs);
+  if (r.k === "ok") return advance(st, fs);
+  S.errs++; show(r.k === "bad" ? "bad" : "hint", r.msg);
+}
+function noCancel() {
+  if (S.done) return;
+  const st = S.steps[S.step];
+  if (st.none()) { const t = S.task; return advance({...st, label: "Bereits vollständig gekürzt", type: "prod", op: "·"}, [{s: t.ops[0].s, w: 0, n: t.a, d: t.b}, {s: t.ops[1].s, w: 0, n: t.c, d: t.d}]); }
+  S.errs++; show("hint", "Doch, hier geht noch etwas! Prüfe, ob Zähler und Nenner im selben Bruch oder über Kreuz einen gemeinsamen Teiler haben.");
+}
+function solution() {
+  if (S.done) return;
+  const st = S.steps[S.step], fs = st.ans();
+  S.errs++;
+  show("hint", `Lösung für diesen Schritt: <span class="expr expr--sm">${st.type === "frac" ? fmt(fs[0]) : fmtOps(fs, st.op)}</span> Trage sie ein und prüfe.`);
+}
+function finish() {
+  S.done = true; S.total++;
+  let msg = "", pts; const clean = S.errs === 0;
+  if (clean) {
+    S.right++; S.streak++; S.best = Math.max(S.best, S.streak); pts = 10 + (S.level - 1) * 5 + Math.min(S.streak - 1, 5) * 2; S.run++; S.wrong = 0;
+    if (S.mode === "adaptive" && S.run >= S.thr) { S.run = 0; if (S.level < 4) { S.level++; msg = `Aufstieg: weiter mit Stufe ${S.level}.`; } else msg = "Alle Stufen gemeistert – du bleibst auf Stufe 4."; }
+  } else {
+    S.streak = 0; S.run = 0; S.wrong++; pts = 3;
+    if (S.mode === "adaptive" && S.wrong >= 2 && S.level > 1) { S.level--; S.wrong = 0; msg = `Zwei Aufgaben mit Fehlern in Folge: zurück zu Stufe ${S.level}.`; }
+  }
+  S.score += pts;
+  $("stepBox").hidden = true;
+  $("fb").innerHTML = `<div class="feedback feedback--${clean ? "ok" : "hint"}"><p class="fb-title">${clean ? "✔ Richtig gelöst, fehlerfrei!" : "Geschafft, aber mit Fehlversuchen."}</p><p>+${pts} Punkte${clean ? "" : `. Fehlversuche in dieser Aufgabe: ${S.errs}`}</p>${msg ? `<p class="fb-note">${msg}</p>` : ""}</div>`;
+  $("next").hidden = false; $("next").focus();
+  stats();
+}
+function stats() {
+  $("sScore").textContent = S.score; $("sStreak").textContent = S.streak; $("sBest").textContent = `(${S.best})`; $("sRate").textContent = `${S.right}/${S.total}`;
+  tb.setProgress(S.mode === "adaptive" ? S.run : 0, `Stufe ${S.level}: ${S.run} von ${S.thr} fehlerfreien Aufgaben in Folge. Zwei Aufgaben mit Fehlern in Folge: eine Stufe zurück.`);
+}
+
+/* ---------- Einstellungen ---------- */
+function cfg() {
+  const mk = (arr, pro) => arr.map(f => `<button type="button" class="chip${pro ? " chip--pro" : ""}${S.pool.has(f) ? " is-active" : ""}" aria-pressed="${S.pool.has(f)}" data-f="${f}">${f}</button>`).join("");
+  $("fBase").innerHTML = mk(BASE); $("fStd").innerHTML = mk(STD); $("fPro").innerHTML = mk(PRO, true);
+  $("tg").innerHTML = [["neg", "Negative Vorzeichen"], ["mix", "Gemischte Zahlen"]].map(([k, l]) => `<button type="button" class="chip${S[k] ? " is-active" : ""}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join("");
+  $("lvls").innerHTML = LV.map((l, i) => `<button type="button" class="chip chip--left${S.level === i + 1 ? " is-active" : ""}" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`).join("");
+  $("manualBox").hidden = S.mode !== "manual";
+  stats();
+}
+function setMode(m) { S.mode = m; S.run = 0; S.wrong = 0; if (m === "adaptive") S.level = 1; cfg(); newTask(); }
+
+$("factors").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; const f = +b.dataset.f;
+  if (S.pool.has(f)) { if (S.pool.size > 1) S.pool.delete(f); } else S.pool.add(f); cfg(); if (!S.done) newTask(); });
+$("tg").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S[b.dataset.t] = !S[b.dataset.t]; cfg(); if (!S.done) newTask(); });
+$("lvls").addEventListener("click", e => { const b = e.target.closest("[data-l]"); if (b) { S.level = +b.dataset.l; cfg(); newTask(); } });
+tb.addEventListener("modechange", e => setMode(e.detail.mode));
+tb.addEventListener("thresholdchange", e => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); stats(); });
+$("stepIn").addEventListener("click", e => { const b = e.target.closest(".fin-sign"); if (b) { const m = b.dataset.s === "+"; b.dataset.s = m ? "-" : "+"; b.textContent = m ? M : "+"; } });
+$("stepIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+$("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = solution; $("next").onclick = newTask;
+document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
+
+S.thr = tb.threshold;
+cfg(); newTask();
+</script>
+</body>
+</html>
