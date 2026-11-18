@@ -77,7 +77,7 @@
     connectedCallback() {
       if (!this._ready) {
         this.innerHTML =
-          '<div class="portal-header card">' +
+          '<div class="portal-header">' +
             '<a class="portal-btn portal-back" data-ref="back" href="#">' + svg(ICON.back) +
               '<span class="portal-back-label" data-ref="backLabel"></span></a>' +
             '<div class="portal-heading">' +
