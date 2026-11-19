@@ -74,7 +74,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',7],['B',6],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'manual',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
