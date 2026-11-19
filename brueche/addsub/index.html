@@ -165,7 +165,7 @@ const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + 
   frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen.',
   ws:'Ganze Zahlen und Bruchteile getrennt zusammenfassen (Zwischenergebnis aus ganzer Zahl und Bruch).',
   wb_mix:'Gemischte Zahl fertig ermitteln: Ganze und Bruchteil zu einer gemischten Zahl (oder ganzen Zahl) zusammenfassen.',
-  to_imp:'Optionaler Schritt: Gemischte Zahl in einen unechten Bruch verwandeln.',
+  to_imp:'Gemischte Zahl in einen unechten Bruch verwandeln.',
   common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
   sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
   reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
@@ -178,7 +178,7 @@ function chainHTML(k){
   const mw=Math.floor(Math.abs(N)/L),mr=Math.abs(N)%L,ms=N<0?M:'';
   return{imp:`<b>Unechte Brüche:</b> ${t(x=>fr(x.w*x.d+x.n,x.d))}`,
     frac:`<b>Bruchteile auf ${L}:</b> ${t(x=>mixed(x.w,x.n*(L/x.d),L))}`,
-    ws:`<b>Zwischenergebnis (Ganze &amp; Bruchteil):</b> <span class="mixed">${W<0?M:''}${Math.abs(W)}</span> ${Z<0?M:'+'} ${fr(Math.abs(Z),L)}`,
+    ws:`<b>Zwischenergebnis (Ganze &amp; Bruchteil):</b> <span class="mixed">${W<0?M:''}${Math.abs(W)}</span> ${((W>=0&&Z>=0)||(W<=0&&Z<=0))?'+':(Z<0?M:'+')} ${fr(Math.abs(Z),L)}`,
     wb_mix:`<b>Gemischte Zahl:</b> ${mr===0?`${ms}${mw}`:`<span class="mixed">${ms}${mw?`<b class="whole">${mw}</b>`:''}${fr(mr,L)}</span>`}`,
     to_imp:`<b>Unechter Bruch:</b> ${fr(sn(N),L)}`,
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
@@ -189,11 +189,11 @@ function chainHTML(k){
 function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed';
   $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${note?` <small>(${note})</small>`:''}</div>`);}
 function adv(rev){const q=S.q;addChain(q.st,rev);
-  if(q.seq[q.st]==='wb_mix'){
+  if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'){
     q.se=0;q.awaitImpChoice=true;
     $('hint').textContent='';
-    $('gt').textContent=`Schritt ${q.st+1} erledigt – möchtest du die gemischte Zahl optional in einen unechten Bruch verwandeln?`;
-    gb.innerHTML='<button class="btn btn-primary" id="wimp">Optional: In unechten Bruch verwandeln</button><button class="btn btn-ghost" id="wskip">Weiter ohne Umwandeln</button>';
+    $('gt').textContent=`Schritt ${q.st+1} erledigt – möchtest du das Ergebnis in einen unechten Bruch verwandeln?`;
+    $('gb').innerHTML='<button class="btn btn-primary" id="wimp">In unechten Bruch verwandeln</button><button class="btn btn-ghost" id="wskip">Fertig ohne Umwandeln</button>';
     $('wimp').onclick=()=>{q.awaitImpChoice=false;q.seq.splice(q.st+1,0,'to_imp');q.st++;guide();};
     $('wskip').onclick=()=>{q.awaitImpChoice=false;q.st++;guide();};
     return;
