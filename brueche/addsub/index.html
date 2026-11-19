@@ -139,14 +139,20 @@ function resHTML(N,L){
 }
 // Komplett-Rechenweg (nur Stufe 1, dort ohne geführte Schritte)
 function stepsHTML(q){
-  const{ts,N,L}=q,g=gcd(N,L),n=Math.abs(N)/g,d=L/g,any=ts.some(x=>x.w);
-  const sg=x=>x.s<0?M:'+';
+  const{ts,N,L}=q,g=gcd(N,L),n=Math.abs(N)/g,d=L/g,any=ts.some(x=>x.w),isWs=q.seq&&q.seq.includes('ws');
+  const sg=x=>x.s<0?M:'+',sn=v=>v<0?M+Math.abs(v):v;
   const imp=ts.map(x=>({s:x.s,n:x.w*x.d+x.n,d:x.d,f:L/x.d}));
   let h='<ol class="steps">';
-  if(any)h+=`<li><b>Gemischte Zahlen umwandeln:</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
-  h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:L===Math.max(...ts.map(x=>x.d))?`Der größte Nenner ${L} ist ein Vielfaches der anderen, also ist ${L} der Hauptnenner.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
-  h+=`<li><b>Erweitern auf ${L}:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n,x.d)} = ${fr(x.n*x.f,L)}${x.f>1?` <small>(·${x.f})</small>`:''}`).join(' &nbsp; ')}</li>`;
-  h+=`<li><b>Zähler zusammenfassen:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.n*x.f}`).join(' ')} = ${N} → ${fr(N<0?M+Math.abs(N):N,L)}</li>`;
+  if(any&&isWs){
+    const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
+    h+=`<li><b>Ganze und Bruchteile getrennt (Weg B):</b> Ganze ${ts.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.w}`).join(' ')} = ${sn(W)} · Bruchteile ${ts.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n*(L/x.d),L)}`).join(' ')} = ${fr(sn(Z),L)}</li>`;
+    h+=`<li><b>Zusammenführen:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}</li>`;
+  }else{
+    if(any)h+=`<li><b>Gemischte Zahlen umwandeln (Weg A):</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
+    h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:L===Math.max(...ts.map(x=>x.d))?`Der größte Nenner ${L} ist ein Vielfaches der anderen, also ist ${L} der Hauptnenner.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
+    h+=`<li><b>Erweitern auf ${L}:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n,x.d)} = ${fr(x.n*x.f,L)}${x.f>1?` <small>(·${x.f})</small>`:''}`).join(' &nbsp; ')}</li>`;
+    h+=`<li><b>Zähler zusammenfassen:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.n*x.f}`).join(' ')} = ${N} → ${fr(N<0?M+Math.abs(N):N,L)}</li>`;
+  }
   h+=g>1?`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(N<0?M+n:n,d)}</li>`:`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1, der Bruch ist schon gekürzt.</li>`;
   if(n>d&&d>1)h+=`<li><b>Als gemischte Zahl:</b> ${resHTML(N,L)}</li>`;
   return h+'</ol>';
@@ -155,11 +161,11 @@ function stepsHTML(q){
 /* ---------- Geführte Schritte (ab Stufe 2) ---------- */
 const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + Zähler).',
   frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen.',
-  ws:'Ganze und Zähler getrennt zusammenfassen (jeweils mit Vorzeichen).',
+  ws:'Ganze Zahlen und Bruchteile getrennt zusammenfassen (Zwischenergebnis aus ganzer Zahl und Bruch).',
   common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
   sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
   reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
-const fi=()=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" aria-label="Nenner"></span>`;
+const fi=(pz='',pn='')=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" placeholder="${pz}" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" placeholder="${pn}" aria-label="Nenner"></span>`;
 const sn=n=>n<0?M+Math.abs(n):n;
 function chainHTML(k){
   const q=S.q,{ts,N,L,g,rn,rd}=q,sg=x=>x.s<0?M:'+',im=x=>(x.w*x.d+x.n)*(L/x.d),rs=(N<0?M:'')+rn;
@@ -167,7 +173,7 @@ function chainHTML(k){
   const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
   return{imp:`<b>Unechte Brüche:</b> ${t(x=>fr(x.w*x.d+x.n,x.d))}`,
     frac:`<b>Bruchteile auf ${L}:</b> ${t(x=>mixed(x.w,x.n*(L/x.d),L))}`,
-    ws:`<b>Getrennt zusammenfassen:</b> Ganze ${t(x=>x.w)} = ${sn(W)} · Zähler ${t(x=>x.n*(L/x.d))} = ${sn(Z)}`,
+    ws:`<b>Zwischenergebnis (Ganze &amp; Bruchteil):</b> <span class="mixed">${W<0?M:''}${Math.abs(W)}</span> ${Z<0?M:'+'} ${fr(Math.abs(Z),L)}`,
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
     sum:q.seq.includes('ws')?`<b>Zu einem Bruch:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}`:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
     reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
@@ -181,10 +187,18 @@ function miss(m,w){const q=S.q;q.err++;q.se++;
 function guide(){
   const q=S.q,g=$('guide'),gb=$('gb');$('hint').textContent='';g.classList.remove('hidden');
   if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
+    $('ans').classList.add('hidden');
     $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
     gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
-    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];guide();};
-    $('wb').onclick=()=>{q.seq=['frac','ws','sum','reduce'];guide();};
+    const afterPick=label=>{
+      if(q.gd){guide();return;}
+      g.classList.add('hidden');
+      $('ans').classList.remove('hidden');
+      hint(`Gewählt: ${label} – trage das Endergebnis unten ein.`,2);
+      $('iw').focus({preventScroll:true});
+    };
+    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];afterPick('Weg A (unechte Brüche)');};
+    $('wb').onclick=()=>{q.seq=['frac','ws','sum','reduce'];afterPick('Weg B (Ganze und Bruchteile getrennt)');};
     return;
   }
   const k=q.seq[q.st];
@@ -202,7 +216,7 @@ function guide(){
   if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
   else if(k==='frac')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`<b class="whole">${x.w}</b>`:'')+fi()).join('');
   else if(k==='common')h=q.ts.map((x,i)=>pre(x,i)+fi()).join('');
-  else if(k==='ws')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" aria-label="Ganze">'+sb('gsg2')+fi();
+  else if(k==='ws')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+sb('gsg2')+fi('Zähler','Nenner');
   else h=sb('gsg')+fi();
   const same=k==='common'&&q.ts.every(x=>x.d===q.ts[0].d)&&!q.ts.some(x=>x.w);
   gb.innerHTML=h+'<button class="btn btn-primary" id="gchk">Prüfen</button>'+(k==='reduce'?'<button class="btn btn-ghost" id="gno">Nicht kürzbar</button>':'')+(same?'<button class="btn btn-ghost" id="gtake">Nenner sind schon gleich – übernehmen</button>':'');
@@ -268,14 +282,15 @@ function newQ(){
   q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
   q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
-  q.seq=q.gd&&q.ts.some(x=>x.w)?null:['common','sum','reduce'];   // null = Wegwahl A/B
+  const hasMix=q.ts.some(x=>x.w);
+  q.seq=hasMix?null:['common','sum','reduce'];   // null = Wegwahl A/B (auch auf Stufe 1)
   $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
   $('sg').textContent='+';$('hint').textContent='';
   ['fb','steps','rw','next','guide'].forEach(i=>$(i).classList.add('hidden'));
-  $('ans').classList.toggle('hidden',q.gd);
-  if(q.gd)guide();else $('iw').focus({preventScroll:true});
+  $('ans').classList.toggle('hidden',q.gd||hasMix);
+  if(q.gd||hasMix)guide();else $('iw').focus({preventScroll:true});
 }
 function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(S.done)return;const q=S.q;
