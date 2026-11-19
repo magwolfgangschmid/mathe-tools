@@ -48,6 +48,7 @@
   <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
   <div class="card stat"><div class="mute xs">Richtig</div><div id="sRate" class="stat-value">0/0</div></div>
 </section>
+<div class="row" style="justify-content:flex-end"><button id="resetStats" type="button" class="btn btn-ghost small">Punkte &amp; Statistik zurücksetzen</button></div>
 
 <section class="card pad pad-lg stack" aria-live="polite">
   <div id="qMeta" class="mute small"></div>
@@ -492,6 +493,12 @@ $('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textC
 $('next').onclick=newQ;
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
   if(S.done)newQ();else if(S.q.gd&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
+function resetStats(){
+  S.score=0;S.streak=0;S.best=0;S.right=0;S.total=0;S.cnt=0;S.wrong=0;
+  try{localStorage.removeItem('bz');}catch(e){}
+  stats();
+}
+$('resetStats').onclick=resetStats;
 try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
 S.thr=tb.threshold;
 cfg();newQ();
