@@ -150,7 +150,6 @@ function stepsHTML(q){
   if(n>d&&d>1)h+=`<li><b>Als gemischte Zahl:</b> ${resHTML(N,L)}</li>`;
   return h+'</ol>';
 }
-
 /* ---------- Geführte Schritte (ab Stufe 2) ---------- */
 const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + Zähler).',
   frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen.',
@@ -187,7 +186,20 @@ function guide(){
     return;
   }
   const k=q.seq[q.st];
-  if(!k){   // Endstufe: gemischte Zahl (Pflicht oder optional) bzw. ganze Zahl
+  if(!k){   // Endstufe: bei getrennter Rechnung (ws) Ergebnis als gemischte Zahl, unechter Bruch danach optional (Plus-Aufgabe)
+    const wsMix=q.seq.includes('ws')&&q.imp;
+    if(wsMix&&!q.plusImp){
+      $('gt').textContent=`Schritt ${q.seq.length+1} – Gemischte Zahl: Gib das Ergebnis als gemischte Zahl ein. Das Minus steht vor der ganzen Zahl.`;
+      gb.innerHTML='';
+      $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
+    }
+    if(wsMix&&q.plusImp){
+      $('gt').textContent='Plus-Aufgabe (+1 Bonuspunkt, optional): Gib das Ergebnis auch als unechten Bruch an – oder beende jetzt.';
+      gb.innerHTML='<button class="btn btn-ghost" id="gdone">Fertig – die gemischte Zahl genügt</button>';
+      $('gdone').onclick=()=>finish(true,false);
+      $('iw').value='';$('iw').disabled=true;$('iz').value='';$('in').value='';
+      $('ans').classList.remove('hidden');$('iz').focus({preventScroll:true});return;
+    }
     if(!q.mx&&!q.opt)return finish(true);
     $('gt').textContent=`Schritt ${q.seq.length+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
     gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
@@ -294,9 +306,23 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
     if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
     if(W===0&&Z>=D&&(S.mix||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
   }
+  const wsMix=q.gd&&q.seq&&q.seq.includes('ws')&&q.imp;
+  if(wsMix&&q.plusImp){
+    const impOk=ok&&w===''&&Z>=D&&D===q.rd;
+    if(!impOk){
+      q.err++;q.se++;
+      if(q.se>=3)return finish(true,false);
+      return hint('Trage den gekürzten unechten Bruch ein (Zähler ≥ Nenner, Feld „ganz“ leer lassen) – oder klicke auf „Fertig“.',1);
+    }
+    $('hint').textContent='';return finish(true,true);
+  }
   if(q.gd&&!ok){q.err++;q.se++;
     if(q.se>=3)return finish(false);
     return hint('Das ist nicht derselbe Wert. Teile den Zähler durch den Nenner: Der Quotient ist die ganze Zahl, der Rest der neue Zähler.');}
+  if(wsMix&&ok){
+    if(!(W>0&&Z>0))return hint('Gib das Ergebnis als gemischte Zahl an (Ganze und Bruchteil).',1);
+    q.plusImp=true;q.se=0;$('hint').textContent='';guide();return;
+  }
   $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
@@ -304,7 +330,7 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
   if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
-    if(bonus){S.score++;msg='+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
+    if(bonus){S.score++;msg=(q.seq&&q.seq.includes('ws')&&q.plusImp)?'+1 Bonuspunkt: Super, Plus-Aufgabe als unechter Bruch gelöst! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
     if(S.mode==='adaptive'){S.cnt++;
       if(S.cnt>=S.thr){
         if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
@@ -360,4 +386,3 @@ cfg();newQ();
 </script>
 </body>
 </html>
-
