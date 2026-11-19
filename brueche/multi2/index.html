@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruchrechnen: Kürzen, Erweitern, Multiplizieren, Dividieren</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+
+<!-- Zentrales Design und Komponenten (GitHub Pages, Unterordner) -->
+<link rel="stylesheet" href="../../shared/style.css">
+<script src="../../shared/components.js"></script>
+</head>
+<body>
+
+<app-header title="Bruchrechnen" subtitle="Kürzen, Erweitern, Multiplizieren und Dividieren" back-url="../../"></app-header>
+
+<main class="app">
+
+  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="manual" threshold="5"></app-mode-toolbar>
+
+  <section class="card pad stack" aria-label="Einstellungen">
+    <div>
+      <h2>Faktoren</h2>
+      <div id="fmodes" class="row">
+        <button type="button" class="chip chip--grow" data-fm="auto">Auto</button>
+        <button type="button" class="chip chip--grow" data-fm="manual">Manuell</button>
+      </div>
+      <p id="autoStatus" class="mute small note"></p>
+      <div id="catBox" class="stack-sm note" hidden></div>
+    </div>
+    <div>
+      <h2>Zusatz-Schalter</h2>
+      <div id="tg" class="row"></div>
+      <p class="mute xs note">Gemischte Zahlen wirken ab Stufe 2, negative Vorzeichen in allen Stufen.</p>
+    </div>
+    <div id="manualBox"><h2>Stufe</h2><div id="lvls" class="grid-2"></div></div>
+  </section>
+
+  <section id="help" class="card pad stack" aria-label="Hilfe" hidden>
+    <h2>Hilfe</h2>
+    <ul id="helpList" class="help-list small"></ul>
+  </section>
+
+  <section class="stats">
+    <div class="card stat"><div class="mute xs">Punkte</div><div id="sScore" class="stat-value">0</div></div>
+    <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
+    <div class="card stat"><div class="mute xs">Fehlerfrei</div><div id="sRate" class="stat-value">0/0</div></div>
+  </section>
+
+  <section class="card pad pad-lg stack" aria-label="Aufgabe">
+    <div id="qMeta" class="mute small"></div>
+    <p id="prompt" class="q-text"></p>
+    <div id="expr" class="expr"></div>
+    <div id="chain" class="chain" aria-label="Rechenweg"></div>
+
+    <div id="stepBox" class="stack-sm">
+      <h2 id="stepTitle"></h2>
+      <p id="stepHint" class="mute small"></p>
+      <div id="stepIn"></div>
+      <div class="row">
+        <button id="chk" class="btn btn-primary" type="button">Prüfen</button>
+        <button id="noCancel" class="btn btn-ghost" type="button" hidden>Bereits vollständig gekürzt</button>
+        <button id="show" class="btn btn-ghost" type="button">Lösung zeigen</button>
+      </div>
+    </div>
+
+    <div id="fb" class="fb-slot" aria-live="polite"></div>
+    <button id="next" class="btn btn-primary btn-block" type="button" hidden>Nächste Aufgabe</button>
+  </section>
+
+  <footer class="foot mute xs">Tipp: Mit „+/−“ wechselst du das Vorzeichen. Enter prüft die Eingabe, danach geht es mit Enter weiter. Ein Schritt zählt erst, wenn er vollständig gekürzt ist.</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const tb = $("tb");
+const M = "−";
+const CATS = [
+  {id: "base", name: "Basis", nums: [2, 3, 4, 5, 10]},
+  {id: "std", name: "Standard", nums: [6, 7, 8, 9, 12]},
+  {id: "ext", name: "Erweitert", nums: [14, 15, 16, 18, 20]},
+  {id: "pro", name: "Profi", nums: [11, 13, 19, 21, 25], pro: true}
+];
+// Auto-Modus: schrittweise Freischaltung
+const AUTO = [[2, 3], [4, 5, 10], [6, 7, 8, 9, 12], [14, 15, 16, 18, 20], [11, 13, 19, 21, 25]];
+const LV = ["Kürzen & Erweitern", "Kreuzkürzen", "Ungekürzt multiplizieren", "Dividieren"];
+const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, mode: "manual", level: 1, thr: tb.threshold,
+  score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0, task: null, steps: [], step: 0, errs: 0, done: false, chain: []};
+
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+const ok = () => ({k: "ok"}), bad = m => ({k: "bad", msg: m}), hint = m => ({k: "hint", msg: m});
+const V = f => ({n: f.s * (f.w * f.d + f.n), d: f.d});
+const same = (x, y) => x.n * y.d === y.n * x.d;
+const imp = o => ({n: o.w * o.d + o.n, d: o.d});
+
+/* ---------- Darstellung ---------- */
+const frac = (n, d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+const num = f => f.n ? (f.w ? `<span class="mixed"><b class="whole">${f.w}</b>${frac(f.n, f.d)}</span>` : frac(f.n, f.d)) : String(f.w);
+const fmt = (f, par) => f.s < 0 ? (par ? `(${M}${num(f)})` : `${M}${num(f)}`) : num(f);
+const fmtOps = (fs, op) => fs.map((f, i) => i ? `${op} ${fmt(f, true)}` : fmt(f)).join(" ");
+
+/* ---------- Aufgaben-Generator (ausschließlich aktive Zahlen) ---------- */
+const active = () => S.fmode === "auto" ? AUTO.slice(0, S.stage + 1).flat() : [...S.pool];
+// Zahl aus 1–3 aktiven Faktoren (0 = kein Treffer)
+function nf(pool, lo, hi) {
+  if (lo <= 1 && Math.random() < .12) return 1;
+  for (let i = 0; i < 50; i++) { let v = 1; for (let j = rnd(1, 3); j > 0; j--) v *= pick(pool); if (v >= lo && v <= hi) return v; }
+  return 0;
+}
+// Operand: gekürzter echter Bruch, bei unred meist mit einer aktiven Zahl erweitert
+function operand(pool, unred) {
+  const d0 = nf(pool, 2, 40), n0 = nf(pool, 1, 39);
+  if (!d0 || !n0 || n0 >= d0 || gcd(n0, d0) !== 1) return null;
+  let k = 1;
+  if (unred && Math.random() < .9) { k = pick(pool); if (d0 * k > 300) return null; }
+  return {s: 1, w: 0, n: n0 * k, d: d0 * k};
+}
+// Alle Kürzungs- und Erweiterungszahlen (ggT) stammen aus den aktiven Zahlen
+function build(level, pool) {
+  const okG = g => g === 1 || pool.includes(g);
+  for (let t = 0; t < 1500; t++) {
+    const sg = S.neg && Math.random() < .4 ? -1 : 1;
+    if (level === 1) {
+      const n0 = nf(pool, 1, 40), d0 = nf(pool, 2, 40);
+      if (!n0 || !d0 || gcd(n0, d0) !== 1 || (n0 >= d0 && Math.random() < .8)) continue;
+      const k = pick(pool); if (n0 * k > 300 || d0 * k > 300) continue;
+      return Math.random() < .5 ? {level, kind: "red", s: sg, n0, d0, n: n0 * k, d: d0 * k} : {level, kind: "ext", s: sg, n0, d0, f: k};
+    }
+    const o = [operand(pool, level >= 3), operand(pool, level >= 3)];
+    if (!o[0] || !o[1]) continue;
+    if (S.mix) { o.forEach(x => { if (Math.random() < .45) x.w = rnd(1, 3); }); if (!o[0].w && !o[1].w && Math.random() < .8) pick(o).w = rnd(1, 3); }
+    if (S.neg) o.forEach(x => { if (Math.random() < .4) x.s = -1; });
+    const P = imp(o[0]), Q = imp(o[1]), div = level === 4;
+    const a = P.n, b = P.d, c = div ? Q.d : Q.n, d = div ? Q.n : Q.d;        // a/b · c/d
+    if (Math.max(a, b, c, d) > 400) continue;
+    const g1 = gcd(a, b), g2 = gcd(c, d), inner = g1 > 1 || g2 > 1;
+    const a1 = a / g1, b1 = b / g1, c1 = c / g2, d1 = d / g2, x1 = gcd(a1, d1), x2 = gcd(c1, b1), cross = x1 > 1 || x2 > 1;
+    if (!(okG(g1) && okG(g2) && okG(x1) && okG(x2))) continue;
+    if (level === 2 && (inner || !cross)) continue;
+    if (level >= 3 && (!inner || (!cross && Math.random() < .7))) continue;
+    return {level, ops: o, div, a, b, c, d};
+  }
+  return null;
+}
+
+/* ---------- Kürzen (Kreuz & innen) ---------- */
+function cancelForm({a, b, c, d}) {
+  let g = gcd(a, b); a /= g; b /= g;
+  g = gcd(c, d); c /= g; d /= g;
+  g = gcd(a, d); a /= g; d /= g;
+  g = gcd(c, b); c /= g; b /= g;
+  return {a, b, c, d};
+}
+function cancelCheck([f1, f2], B, sp) {
+  const n1 = f1.n, d1 = f1.d, n2 = f2.n, d2 = f2.d;
+  if (n1 * n2 * B.b * B.d !== B.a * B.c * d1 * d2) return bad("Der Wert des Produkts hat sich verändert. Beim Kürzen teilst du Zähler und Nenner nur durch gemeinsame Teiler. Über Kreuz darf ein Zähler mit dem Nenner des anderen Bruchs gekürzt werden.");
+  if (f1.s * f2.s !== sp) return bad("Der Betrag stimmt, aber das Vorzeichen nicht. Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus.");
+  if (B.a % n1 || B.b % d1 || B.c % n2 || B.d % d2) return bad("Der Wert stimmt, aber so wurde nicht gekürzt. Es darf nur durch gemeinsame Teiler geteilt werden. Bleib bei den Zahlen der Aufgabe und multipliziere noch nicht aus.");
+  const inner = gcd(n1, d1) > 1 || gcd(n2, d2) > 1, cross = gcd(n1, d2) > 1 || gcd(n2, d1) > 1;
+  if (inner && cross) return hint("Mathematisch richtig, aber noch nicht vollständig gekürzt: Weder innerhalb der Brüche noch über Kreuz ist alles erledigt!");
+  if (inner) return hint("Mathematisch richtig, aber ein Bruch lässt sich noch kürzen: Zähler und Nenner desselben Bruchs haben noch einen gemeinsamen Teiler.");
+  if (cross) return hint("Mathematisch richtig, aber du sollst besser vorher über Kreuz kürzen! Ein Zähler und der Nenner des anderen Bruchs haben noch einen gemeinsamen Teiler.");
+  return ok();
+}
+function finalCheck(f, R) {
+  const v = V(f);
+  if (!same(v, {n: R.s * R.n, d: R.d})) return Math.abs(v.n) * R.d === R.n * v.d
+    ? bad("Der Betrag stimmt, aber das Vorzeichen nicht. Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus.")
+    : bad("Das Ergebnis stimmt nicht. Multipliziere Zähler mal Zähler und Nenner mal Nenner der gekürzten Brüche und achte auf das Vorzeichen.");
+  if (f.w && f.n >= f.d) return hint("Der Wert stimmt, aber der Bruchteil einer gemischten Zahl muss kleiner als 1 sein.");
+  if (f.n && gcd(f.n, f.d) > 1) return hint(`Mathematisch richtig, aber noch nicht vollständig gekürzt (gemeinsamer Teiler ${gcd(f.n, f.d)}).`);
+  return ok();
+}
+
+/* ---------- Schritte je Aufgabe ---------- */
+function stepsOf(t) {
+  const st = [];
+  if (t.level === 1) {
+    const s = t.s;
+    if (t.kind === "red") st.push({label: "Gekürzt", type: "frac", title: "Kürze den Bruch vollständig", hint: "Teile Zähler und Nenner durch ihren größten gemeinsamen Teiler.",
+      ans: () => [{s, w: 0, n: t.n0, d: t.d0}],
+      check([f]) {
+        if (!same(V(f), {n: s * t.n0, d: t.d0})) return f.n * t.d0 === t.n0 * f.d ? bad("Der Betrag stimmt, aber das Vorzeichen nicht.") : bad("Der Wert stimmt nicht mehr. Beim Kürzen teilst du Zähler und Nenner durch dieselbe Zahl.");
+        const g = gcd(f.n, f.d);
+        return g > 1 ? hint(`Mathematisch richtig, aber noch nicht vollständig gekürzt! Zähler und Nenner haben noch den gemeinsamen Teiler ${g}.`) : ok();
+      }});
+    else st.push({label: `Erweitert mit ${t.f}`, type: "frac", title: `Erweitere den Bruch mit ${t.f}`, hint: `Multipliziere Zähler und Nenner jeweils mit ${t.f}.`,
+      ans: () => [{s, w: 0, n: t.n0 * t.f, d: t.d0 * t.f}],
+      check([f]) {
+        if (!same(V(f), {n: s * t.n0, d: t.d0})) return f.n * t.d0 === t.n0 * f.d ? bad("Der Betrag stimmt, aber das Vorzeichen nicht.") : bad(`Beim Erweitern multiplizierst du Zähler und Nenner mit demselben Faktor, hier ${t.f}.`);
+        if (f.n !== t.n0 * t.f || f.d !== t.d0 * t.f) return hint(`Der Wert stimmt, aber du solltest mit ${t.f} erweitern: ${t.n0}·${t.f} im Zähler und ${t.d0}·${t.f} im Nenner.`);
+        return ok();
+      }});
+    return st;
+  }
+  const {a, b, c, d} = t, B = {a, b, c, d}, sp = t.ops[0].s * t.ops[1].s;
+  if (t.ops.some(o => o.w)) st.push({label: "In unechte Brüche umgewandelt", type: "prod", op: t.div ? ":" : "·", title: "Gemischte Zahlen in unechte Brüche umwandeln",
+    hint: "Ganze · Nenner + Zähler, der Nenner bleibt gleich. Noch nicht kürzen!",
+    ans: () => t.ops.map(o => ({s: o.s, w: 0, ...imp(o)})),
+    check(fs) {
+      for (let i = 0; i < 2; i++) {
+        const o = t.ops[i], p = imp(o), f = fs[i];
+        if (f.n === p.n && f.d === p.d) { if (f.s !== o.s) return bad(`Das Vorzeichen des ${i + 1}. Bruchs stimmt nicht.`); continue; }
+        if (same(V(f), {n: o.s * p.n, d: p.d})) return hint(`Der Wert des ${i + 1}. Bruchs stimmt, aber hier wird nur umgewandelt, noch nicht gekürzt: Der Nenner bleibt ${p.d}.`);
+        return bad(o.w ? `Der ${i + 1}. Bruch stimmt nicht. Rechne Ganze mal Nenner plus Zähler: ${o.w}·${o.d}+${o.n}. Der Nenner bleibt ${o.d}.` : `Der ${i + 1}. Bruch ist schon ein einfacher Bruch und bleibt unverändert.`);
+      }
+      return ok();
+    }});
+  if (t.div) st.push({label: "Kehrwert gebildet", type: "prod", op: "·", title: "Mit dem Kehrwert multiplizieren", hint: "Aus „:“ wird „·“ und der zweite Bruch wird umgedreht. Noch nicht kürzen!",
+    ans: () => [{s: t.ops[0].s, w: 0, n: a, d: b}, {s: t.ops[1].s, w: 0, n: c, d}],
+    check([f1, f2]) {
+      const s1 = t.ops[0].s, s2 = t.ops[1].s;
+      if (f1.n === a && f1.d === b && f2.n === c && f2.d === d) return f1.s === s1 && f2.s === s2 ? ok() : bad("Die Zahlen stimmen, aber ein Vorzeichen nicht: Beim Kehrwert bleibt das Vorzeichen erhalten.");
+      if (f1.n === b && f1.d === a) return bad("Nur der zweite Bruch (der Divisor) wird umgedreht. Der erste bleibt unverändert.");
+      if (f2.n === d && f2.d === c) return bad("Beim Dividieren multiplizierst du mit dem Kehrwert: Der zweite Bruch muss umgedreht werden.");
+      if (f1.s * f2.s === s1 * s2 && f1.n * f2.n * b * d === a * c * f1.d * f2.d) return hint("Mathematisch gleichwertig, aber in diesem Schritt wird nur der Kehrwert gebildet. Gekürzt wird erst im nächsten Schritt.");
+      return bad("Das passt nicht. Schreibe a/b : c/d um in a/b · d/c.");
+    }});
+  const titles = {2: "Über Kreuz kürzen", 3: "Alles kürzen: innerhalb der Brüche und über Kreuz", 4: "Alles kürzen: innerhalb der Brüche und über Kreuz"};
+  const hints = {2: "Kürze vor dem Ausrechnen: Ein Zähler und der Nenner des anderen Bruchs dürfen durch denselben Teiler geteilt werden. Trage beide Brüche gekürzt ein. Geht nichts mehr, klicke „Bereits vollständig gekürzt“.",
+    3: "Kürze zuerst innerhalb jedes Bruchs, dann über Kreuz, bis nichts mehr geht. Trage beide Brüche vollständig gekürzt ein.",
+    4: "Kürze innerhalb der Brüche und über Kreuz, bis nichts mehr geht. Trage beide Brüche vollständig gekürzt ein."};
+  const cf = cancelForm(B), Rn = cf.a * cf.c, Rd = cf.b * cf.d, g = gcd(Rn, Rd), R = {s: sp, n: Rn / g, d: Rd / g};
+  st.push({label: "Vollständig gekürzt", type: "prod", op: "·", cancel: true, title: titles[t.level], hint: hints[t.level],
+    ans: () => [{s: sp, w: 0, n: cf.a, d: cf.b}, {s: 1, w: 0, n: cf.c, d: cf.d}],
+    none: () => gcd(a, b) === 1 && gcd(c, d) === 1 && gcd(a, d) === 1 && gcd(c, b) === 1,
+    check: fs => cancelCheck(fs, B, sp)});
+  st.push({label: "Ergebnis", type: "frac", whole: S.mix, title: "Endergebnis", hint: "Multipliziere Zähler mal Zähler und Nenner mal Nenner. Das Ergebnis soll vollständig gekürzt sein" + (S.mix ? " (als Bruch oder als gemischte Zahl)." : "."),
+    ans: () => [{s: R.s, w: 0, n: R.n, d: R.d}], check: ([f]) => finalCheck(f, R)});
+  return st;
+}
+
+/* ---------- Eingabefelder ---------- */
+const finHTML = whole => `<div class="fin">${S.neg ? '<button type="button" class="chip fin-sign" data-s="+" aria-label="Vorzeichen wechseln">+</button>' : ""}${whole ? '<input class="input fin-w" inputmode="numeric" placeholder="ganz" aria-label="Ganze Zahl" autocomplete="off">' : ""}<div class="answer-frac"><input class="input fin-n" inputmode="numeric" placeholder="Zähler" aria-label="Zähler" autocomplete="off"><div class="bar"></div><input class="input fin-d" inputmode="numeric" placeholder="Nenner" aria-label="Nenner" autocomplete="off"></div></div>`;
+function readFin(el) {
+  const sg = el.querySelector(".fin-sign"), s = sg && sg.dataset.s === "-" ? -1 : 1;
+  const v = c => { const i = el.querySelector(c); return i ? i.value.trim() : ""; };
+  const w = v(".fin-w"), n = v(".fin-n"), d = v(".fin-d");
+  if (!/^\d*$/.test(w) || !/^\d*$/.test(n) || !/^\d*$/.test(d)) return {err: "Bitte nur ganze Zahlen (Ziffern) eintragen. Das Minus setzt du mit dem Knopf +/−."};
+  if (w !== "" && n === "" && d === "") return {s, w: +w, n: 0, d: 1};
+  if (n === "" || d === "") return {err: "Trage Zähler und Nenner ein."};
+  if (+d === 0) return {err: "Der Nenner darf nicht 0 sein."};
+  if (+n === 0 && w === "") return {err: "Der Zähler darf nicht 0 sein."};
+  return {s, w: +w || 0, n: +n, d: +d};
+}
+
+/* ---------- Ablauf ---------- */
+function show(kind, html) { $("fb").innerHTML = `<div class="feedback feedback--${kind}"><p>${html}</p></div>`; }
+function renderChain() {
+  $("chain").innerHTML = S.chain.map(r => `<div class="chain-row"><b aria-hidden="true">✔</b><span>${r.label}:</span><span class="chain-expr">${r.expr}</span></div>`).join("");
+}
+function renderStep() {
+  const st = S.steps[S.step];
+  $("stepTitle").textContent = `Schritt ${S.step + 1} von ${S.steps.length}: ${st.title}`;
+  $("stepHint").textContent = st.hint || "";
+  $("stepIn").innerHTML = `<div class="answer">${st.type === "frac" ? finHTML(st.whole) : finHTML(false) + `<span class="op">${st.op}</span>` + finHTML(false)}</div>`;
+  $("noCancel").hidden = !st.cancel;
+  $("fb").innerHTML = "";
+  const i = $("stepIn").querySelector("input"); if (i) i.focus({preventScroll: true});
+}
+function newTask() {
+  const pool = active();
+  let t = null;
+  for (let lv = S.level; lv >= 1 && !t; lv--) t = build(lv, pool);
+  if (!t) { const k = pick(pool), d0 = pick(pool); t = {level: 1, kind: "red", s: 1, n0: 1, d0, n: k, d: d0 * k}; }
+  const relax = t.level !== S.level;
+  S.task = t; S.steps = stepsOf(t); S.step = 0; S.errs = 0; S.done = false; S.chain = [];
+  $("qMeta").textContent = `Stufe ${t.level}: ${LV[t.level - 1]}` + (relax ? ` · mit den aktiven Zahlen ist Stufe ${S.level} nicht möglich, bitte weitere Zahlen aktivieren` : "");
+  if (t.level === 1) {
+    $("prompt").textContent = t.kind === "red" ? "Kürze den Bruch vollständig:" : `Erweitere den Bruch mit ${t.f}:`;
+    $("expr").innerHTML = fmt({s: t.s, w: 0, n: t.kind === "red" ? t.n : t.n0, d: t.kind === "red" ? t.d : t.d0}) + " = ?";
+  } else {
+    $("prompt").textContent = t.level === 2 ? "Multipliziere. Kürze zuerst über Kreuz, dann rechne aus:"
+      : t.level === 3 ? "Multipliziere. Kürze zuerst alles (innerhalb der Brüche und über Kreuz), dann rechne aus:"
+      : "Dividiere. Bilde den Kehrwert, kürze vollständig und rechne aus:";
+    $("expr").innerHTML = fmtOps(t.ops, t.div ? ":" : "·") + " = ?";
+  }
+  renderChain(); renderStep();
+  $("stepBox").hidden = false; $("next").hidden = true;
+}
+function advance(st, fs) {
+  const expr = st.type === "frac" ? fmt(fs[0]) : fmtOps(fs, st.op);
+  S.chain.push({label: `Schritt ${S.step + 1} · ${st.label}`, expr});
+  S.step++; renderChain();
+  if (S.step >= S.steps.length) finish(); else renderStep();
+}
+function check() {
+  if (S.done) return;
+  const st = S.steps[S.step], fs = [...$("stepIn").querySelectorAll(".fin")].map(readFin), e = fs.find(f => f.err);
+  if (e) return show("hint", e.err);
+  const r = st.check(fs);
+  if (r.k === "ok") return advance(st, fs);
+  S.errs++; show(r.k === "bad" ? "bad" : "hint", r.msg);
+}
+function noCancel() {
+  if (S.done) return;
+  const st = S.steps[S.step];
+  if (st.none()) { const t = S.task; return advance({...st, label: "Bereits vollständig gekürzt", type: "prod", op: "·"}, [{s: t.ops[0].s, w: 0, n: t.a, d: t.b}, {s: t.ops[1].s, w: 0, n: t.c, d: t.d}]); }
+  S.errs++; show("hint", "Doch, hier geht noch etwas! Prüfe, ob Zähler und Nenner im selben Bruch oder über Kreuz einen gemeinsamen Teiler haben.");
+}
+function solution() {
+  if (S.done) return;
+  const st = S.steps[S.step], fs = st.ans();
+  S.errs++;
+  show("hint", `Lösung für diesen Schritt: <span class="expr expr--sm">${st.type === "frac" ? fmt(fs[0]) : fmtOps(fs, st.op)}</span> Trage sie ein und prüfe.`);
+}
+function finish() {
+  S.done = true; S.total++;
+  let msg = "", pts; const clean = S.errs === 0;
+  if (clean) {
+    S.right++; S.streak++; S.best = Math.max(S.best, S.streak); pts = 10 + (S.level - 1) * 5 + Math.min(S.streak - 1, 5) * 2; S.run++; S.wrong = 0;
+    if (S.run >= S.thr) {
+      S.run = 0;
+      const cf = S.fmode === "auto" && S.stage < AUTO.length - 1, cl = S.mode === "adaptive" && S.level < 4;
+      if (cf && (!cl || !S.flip)) { S.stage++; S.flip = true; msg = `Neue Faktoren freigeschaltet: ${AUTO[S.stage].join(", ")}.`; }
+      else if (cl) { S.level++; S.flip = false; msg = `Aufstieg: weiter mit Stufe ${S.level}.`; }
+      else if (S.mode === "adaptive" || S.fmode === "auto") msg = "Höchste Stufe und alle Faktoren erreicht – stark!";
+    }
+  } else {
+    S.streak = 0; S.run = 0; S.wrong++; pts = 3;
+    if (S.wrong >= 2) {
+      if (S.fmode === "auto" && S.stage > 0) { msg = `Zwei Aufgaben mit Fehlern in Folge: die Faktoren ${AUTO[S.stage].join(", ")} werden pausiert.`; S.stage--; S.wrong = 0; }
+      else if (S.mode === "adaptive" && S.level > 1) { S.level--; S.wrong = 0; msg = `Zwei Aufgaben mit Fehlern in Folge: zurück zu Stufe ${S.level}.`; }
+    }
+  }
+  S.score += pts;
+  $("stepBox").hidden = true;
+  $("fb").innerHTML = `<div class="feedback feedback--${clean ? "ok" : "hint"}"><p class="fb-title">${clean ? "✔ Richtig gelöst, fehlerfrei!" : "Geschafft, aber mit Fehlversuchen."}</p><p>+${pts} Punkte${clean ? "" : `. Fehlversuche in dieser Aufgabe: ${S.errs}`}</p>${msg ? `<p class="fb-note">${msg}</p>` : ""}</div>`;
+  $("next").hidden = false; $("next").focus();
+  cfg();
+}
+function stats() {
+  $("sScore").textContent = S.score; $("sStreak").textContent = S.streak; $("sBest").textContent = `(${S.best})`; $("sRate").textContent = `${S.right}/${S.total}`;
+  tb.setProgress(S.run, `Fehlerfrei in Folge: ${S.run} von ${S.thr}.` + (S.fmode === "auto" && S.stage < AUTO.length - 1 ? ` Danach kommen neue Faktoren dazu (${AUTO[S.stage + 1].join(", ")}).` : "") + " Zwei Aufgaben mit Fehlern in Folge: ein Schritt zurück.");
+}
+
+/* ---------- Einstellungen ---------- */
+function press(el, on) { el.setAttribute("aria-pressed", on); el.classList.toggle("is-active", on); }
+function cfg() {
+  document.querySelectorAll("[data-fm]").forEach(b => press(b, b.dataset.fm === S.fmode));
+  $("autoStatus").hidden = S.fmode !== "auto";
+  $("autoStatus").textContent = `Auto-Faktoren aktiv: ${active().join(", ")}`;
+  $("catBox").hidden = S.fmode !== "manual";
+  $("catBox").innerHTML = CATS.map(c => {
+    const n = c.nums.filter(x => S.pool.has(x)).length, open = S.open.has(c.id);
+    return `<div class="cat"><button type="button" class="chip chip--left chip--cat${c.pro ? " chip--pro" : ""}" data-c="${c.id}" aria-expanded="${open}">${c.name} · ${n} von ${c.nums.length} aktiv ${open ? "▴" : "▾"}</button>` +
+      (open ? `<div class="row cat-nums">${c.nums.map(x => `<button type="button" class="chip${c.pro ? " chip--pro" : ""}${S.pool.has(x) ? " is-active" : ""}" aria-pressed="${S.pool.has(x)}" data-f="${x}">${x}</button>`).join("")}</div>` : "") + `</div>`;
+  }).join("");
+  $("tg").innerHTML = [["neg", "Negative Vorzeichen"], ["mix", "Gemischte Zahlen"], ["help", "Hilfe"]].map(([k, l]) => `<button type="button" class="chip${S[k] ? " is-active" : ""}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join("");
+  $("lvls").innerHTML = LV.map((l, i) => `<button type="button" class="chip chip--left${S.level === i + 1 ? " is-active" : ""}" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`).join("");
+  $("manualBox").hidden = S.mode !== "manual";
+  $("help").hidden = !S.help;
+  stats();
+}
+$("helpList").innerHTML = [
+  `<b>Kürzen:</b> Teile Zähler und Nenner durch dieselbe Zahl, bis es nicht mehr geht. Beispiel: ${frac(6, 8)} = ${frac(3, 4)} (geteilt durch 2).`,
+  `<b>Erweitern:</b> Multipliziere Zähler und Nenner mit derselben Zahl. Beispiel: ${frac(2, 3)} mit 4 erweitert ergibt ${frac(8, 12)}.`,
+  `<b>Kreuzkürzen:</b> Vor dem Multiplizieren darfst du einen Zähler mit dem Nenner des <i>anderen</i> Bruchs kürzen. Beispiel: ${frac(3, 4)} · ${frac(2, 9)} = ${frac(1, 2)} · ${frac(1, 3)} = ${frac(1, 6)}.`,
+  `<b>Kehrwert:</b> Dividieren heißt mit dem Kehrwert multiplizieren: ${frac("a", "b")} : ${frac("c", "d")} = ${frac("a", "b")} · ${frac("d", "c")}. Beispiel: ${frac(2, 3)} : ${frac(4, 9)} = ${frac(2, 3)} · ${frac(9, 4)}.`,
+  `<b>Gemischte Zahlen:</b> Erst in einen unechten Bruch umwandeln: Ganze · Nenner + Zähler, der Nenner bleibt.`,
+  `<b>Vorzeichen:</b> Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus. Beim Dividieren bleibt das Vorzeichen beim Kehrwert erhalten.`
+].map(x => `<li>${x}</li>`).join("");
+function setMode(m) { S.mode = m; S.run = 0; S.wrong = 0; if (m === "adaptive") S.level = 1; cfg(); newTask(); }
+
+$("fmodes").addEventListener("click", e => { const b = e.target.closest("[data-fm]"); if (!b || b.dataset.fm === S.fmode) return;
+  if (b.dataset.fm === "manual") S.pool = new Set(AUTO.slice(0, S.stage + 1).flat());
+  S.fmode = b.dataset.fm; S.run = 0; S.wrong = 0; cfg(); newTask(); });
+$("catBox").addEventListener("click", e => {
+  const c = e.target.closest("[data-c]"), f = e.target.closest("[data-f]");
+  if (c) { S.open.has(c.dataset.c) ? S.open.delete(c.dataset.c) : S.open.add(c.dataset.c); cfg(); return; }
+  if (!f) return;
+  const n = +f.dataset.f;
+  if (S.pool.has(n)) { if (S.pool.size === 1) { show("hint", "Mindestens eine Zahl muss aktiv bleiben."); return; } S.pool.delete(n); } else S.pool.add(n);
+  cfg(); if (!S.done) newTask(); });
+$("tg").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; const k = b.dataset.t; S[k] = !S[k]; cfg(); if (k !== "help" && !S.done) newTask(); });
+$("lvls").addEventListener("click", e => { const b = e.target.closest("[data-l]"); if (b) { S.level = +b.dataset.l; cfg(); newTask(); } });
+tb.addEventListener("modechange", e => setMode(e.detail.mode));
+tb.addEventListener("thresholdchange", e => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); stats(); });
+$("stepIn").addEventListener("click", e => { const b = e.target.closest(".fin-sign"); if (b) { const m = b.dataset.s === "+"; b.dataset.s = m ? "-" : "+"; b.textContent = m ? M : "+"; } });
+$("stepIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+$("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = solution; $("next").onclick = newTask;
+document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
+
+S.thr = tb.threshold;
+cfg(); newTask();
+</script>
+</body>
+</html>
