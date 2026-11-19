@@ -413,26 +413,305 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
     if(bonus){S.score++;msg=(q.seq&&q.seq.includes('ws'))?'+1 Bonuspunkt: Super, Plus-Aufgabe als unechter Bruch gelöst! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
     if(S.mode==='adaptive'){S.cnt++;
-      if(S.cnt>=S.thr){
-        if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
-        else{S.cnt=S.thr;msg+='Alle Bausteine und Stufen freigeschaltet – stark!';}}}
-  }else{S.streak=0;S.wrong++;
-    if(S.mode==='adaptive'&&S.wrong>=2&&S.ai>0){S.ai--;S.cnt=0;S.wrong=0;applyAuto();msg='Zwei Fehler in Folge: ein Schritt zurück.';}}
-  ['iw','iz','in'].forEach(i=>$(i).disabled=true);$('sg').disabled=true;$('chk').disabled=true;$('guide').classList.add('hidden');
-  const part=fin&&q.gd&&!ok,fb=$('fb');fb.className='feedback feedback--'+(ok?'ok':part?'hint':'bad');
-  const res=q.opt?(q.N<0?M:'')+fr(q.rn,q.rd)+' = '+resHTML(q.N,q.L):resHTML(q.N,q.L);
-  fb.innerHTML=`<div class="fb-title">${ok?'✔ Richtig!':part?'Gelöst – aber mit Fehlversuchen, das zählt nicht als richtig.':'✘ Leider falsch.'}</div><div class="fb-result">Ergebnis: <span class="expr expr--sm">${res}</span></div>`+(msg?`<p class="fb-note">${msg}</p>`:'');
-  if(!q.gd){$('steps').innerHTML=stepsHTML(q);$('rw').textContent='Rechenweg anzeigen';$('rw').classList.remove('hidden');}
-  $('next').classList.remove('hidden');$('next').focus();
-  cfg();
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brüche addieren &amp; subtrahieren</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+
+<!-- Zentrales Design (GitHub Pages, Unterordner) -->
+<link rel="stylesheet" href="../../shared/style.css">
+<script src="../../shared/components.js"></script>
+<style>
+/* App-spezifisch: geführter Rechenweg */
+.chain{display:grid;gap:.4rem}
+.chain:empty{display:none}
+.chain-step{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;background:var(--soft);border-radius:var(--radius-sm);padding:.5rem .75rem;font-size:.95rem}
+.chain-step .tag{color:var(--ok);font-weight:800}
+.guide{display:grid;justify-items:center;gap:.6rem;border:1.5px dashed var(--acc);border-radius:var(--radius-sm);padding:.75rem}
+.guide-title{font-weight:600;font-size:.95rem;text-align:center}
+.chip.is-active:disabled{opacity:1}
+.hint.is-ok{color:var(--ok)}
+.ws-part{display:inline-flex;align-items:center;gap:.35rem}
+</style>
+</head>
+<body>
+<app-header title="Brüche rechnen" subtitle="Addieren und subtrahieren" back-url="../../"></app-header>
+
+<div class="app">
+
+<app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="5" label-adaptive="Auto" slider-text="Nächster Baustein bzw. nächste Stufe nach {n} richtigen Aufgaben"></app-mode-toolbar>
+
+<section class="card pad stack">
+  <div>
+    <h2>Nenner-Bausteine</h2>
+    <div id="bl" class="row"></div>
+    <p id="bnote" class="mute xs note"></p>
+  </div>
+  <div>
+    <h2>Zusatz-Schalter</h2>
+    <div id="tg" class="row"></div>
+  </div>
+  <div id="manualBox"><h2>Stufe</h2><div id="lvls" class="grid-2"></div></div>
+</section>
+
+<section class="stats">
+  <div class="card stat"><div class="mute xs">Punkte</div><div id="sScore" class="stat-value">0</div></div>
+  <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
+  <div class="card stat"><div class="mute xs">Richtig</div><div id="sRate" class="stat-value">0/0</div></div>
+</section>
+
+<section class="card pad pad-lg stack" aria-live="polite">
+  <div id="qMeta" class="mute small"></div>
+  <div id="expr" class="expr"></div>
+  <div id="chain" class="chain"></div>
+  <div id="guide" class="guide hidden"><div id="gt" class="guide-title"></div><div id="gb" class="answer"></div></div>
+  <div id="ans" class="answer">
+    <button id="sg" class="chip" aria-label="Vorzeichen wechseln">+</button>
+    <input id="iw" class="input" inputmode="numeric" placeholder="ganz" aria-label="Ganze Zahl">
+    <div class="answer-frac"><input id="iz" class="input" inputmode="numeric" placeholder="Zähler" aria-label="Zähler"><div class="bar"></div><input id="in" class="input" inputmode="numeric" placeholder="Nenner" aria-label="Nenner"></div>
+    <button id="chk" class="btn btn-primary">Prüfen</button>
+  </div>
+  <p id="hint" class="hint"></p>
+  <div id="fb" class="feedback hidden"></div>
+  <div id="steps" class="card steps-card hidden"></div>
+  <div class="row"><button id="rw" class="btn btn-ghost hidden">Rechenweg anzeigen</button><button id="next" class="btn btn-primary hidden">Nächste Aufgabe</button></div>
+</section>
+<footer class="foot mute xs">Stufe 1: Antwort als gemischte Zahl (1 3/4) oder ganze Zahl, vollständig gekürzt. Ab Stufe 2 wirst du Schritt für Schritt geführt: Hauptnenner → Zähler → Kürzen. Ein unechter Bruch darf gemischt geschrieben werden (+1 Bonuspunkt). Das Minus steht vor der ganzen Zahl: Knopf links oder „-1“ im Feld „ganz“.</footer>
+</div>
+
+<script>
+const BL=[2,3,5,7,4,6],PRO=[11,13,17,19],SUB={4:'2²',6:'2·3'},BASIS=[2,3,5];
+const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner','ein Nenner ist ein Vielfaches des anderen','Hauptnenner im Kopf bestimmbar','Nebenrechnung nötig'];
+// Auto-Modus: Reihenfolge der Freischaltungen (B = Nennerbaustein, L = Stufe)
+const LAD=[['L',2],['B',4],['L',3],['B',7],['B',6],['L',4],['B',11],['B',13],['B',17],['B',19]];
+const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
+const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
+const $=id=>document.getElementById(id);
+const tb=$('tb');
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a),lcm=(a,b)=>a/gcd(a,b)*b;
+const M='−';
+const hint=(m,w)=>{const h=$('hint');h.textContent=m;h.className='hint '+(w===2?'is-ok':w?'is-warn':'is-bad');};
+
+// Kürzbarkeits-Quote: aus einem gemischten 3er-Beutel [kürzbar, nicht, nicht] ziehen → ca. 33 %
+function wantRed(){if(!S.bag.length)S.bag=[true,false,false].sort(()=>Math.random()-.5);return S.bag.pop();}
+function applyAuto(){S.bl=new Set(BASIS);S.level=1;LAD.slice(0,S.ai).forEach(([t,v])=>{if(t==='B')S.bl.add(v);else S.level=v;});}
+
+function genDen(){
+  const b=[...S.bl],cap=b.some(x=>x>=11)?130:72;
+  for(let i=0;i<50;i++){let d=1;for(let j=rnd(1,2);j>0;j--)d*=pick(b);if(d>=2&&d<=cap)return d;}
+  return pick(b);
 }
-function autoInfo(){
-  const act=[...S.bl].sort((a,b)=>a-b).join(', ');
-  if(S.ai>=LAD.length)return `Alles freigeschaltet · aktive Bausteine: ${act} · Stufe ${S.level}`;
-  return `Aktive Bausteine: ${act} · Stufe ${S.level} · ${S.cnt}/${S.thr} bis ${LAD[S.ai][0]==='B'?'zum nächsten Baustein':'zur nächsten Stufe'}`;
+const divs=D=>{const r=[];for(let i=2;i<D;i++)if(D%i===0&&[...S.bl].some(b=>i%b===0))r.push(i);return r;};
+function densFor(L,k,t){
+  if(L===1){const d=genDen();return Array(k).fill(d);}
+  if(L===2){const D=genDen(),v=divs(D);if(!v.length)return null;
+    const a=[D,pick(v)];while(a.length<k)a.push(pick(v.concat(D)));return a.sort(()=>Math.random()-.5);}
+  return Array.from({length:k},genDen);
 }
-function stats(){
-  try{localStorage.setItem('bz',JSON.stringify({s:S.score,b:S.best,r:S.right,t:S.total}))}catch(e){}
+function numFor(d,L){
+  const all=Array.from({length:d-1},(_,i)=>i+1),cop=all.filter(n=>gcd(n,d)===1),red=all.filter(n=>gcd(n,d)>1);
+  if(L<=2)return pick(cop);
+  return red.length&&Math.random()<.5?pick(red):pick(all);
+}
+function make(want){
+  const L=S.level,k=S.three?3:2;
+  for(let t=0;t<400;t++){
+    const relax=t>=350,dens=densFor(L,k,t)||(relax?Array.from({length:k},genDen):null);if(!dens)continue;
+    const mx=Math.max(...dens),Lc=dens.reduce((a,d)=>lcm(a,d),1),chain=Lc===mx;
+    if(!relax&&L===2&&(!chain||dens.every(d=>d===mx)))continue;
+    if(!relax&&L===3&&(chain||Lc>(t<250?40:400)))continue;
+    if(!relax&&L===4&&(chain||Lc<(t<250?42:0)||Lc>(t<300?400:5000)))continue;
+    const ts=dens.map(d=>({s:1,w:S.mix&&Math.random()<.6?rnd(1,4):0,n:numFor(d,L),d,v:''}));
+    if(S.mix&&!ts.some(x=>x.w))pick(ts).w=rnd(1,4);
+    ts.forEach((x,i)=>{if(Math.random()<.45&&(S.neg||i>0))x.s=-1;
+      if(S.neg&&i>0){if(x.s<0&&Math.random()<.5)x.v='p';else if(x.s>0&&Math.random()<.25)x.v='m';}});
+    const N=ts.reduce((a,x)=>a+x.s*(x.w*x.d+x.n)*(Lc/x.d),0);
+    if(N===0||(!S.neg&&N<0))continue;
+    if(t<300&&(gcd(Math.abs(N),Lc)>1)!==want)continue;   // Quote kürzbar / nicht kürzbar
+    const key=ts.map(x=>`${x.s}:${x.w}:${x.n}/${x.d}`).sort().join('|');
+    if(t<320&&S.seen.includes(key))continue;             // Wiederholung der letzten Aufgaben vermeiden
+    S.seen.push(key);if(S.seen.length>6)S.seen.shift();
+    return{ts,N,L:Lc,relax};
+  }
+  return{ts:[{s:1,w:0,n:1,d:2,v:''},{s:1,w:0,n:1,d:2,v:''}],N:2,L:2};
+}
+const fr=(n,d)=>`<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+const mixed=(w,n,d)=>`<span class="mixed">${w?`<b class="whole">${w}</b>`:''}${fr(n,d)}</span>`;
+function exprHTML(ts){return ts.map((x,i)=>{const f=mixed(x.w,x.n,x.d);
+  if(i===0)return x.s<0?`${M} ${f}`:f;
+  if(x.v==='p')return `+ (${M}${f})`;if(x.v==='m')return `− (${M}${f})`;
+  return `${x.s<0?M:'+'} ${f}`;}).join(' ')+' = ?';}
+function resHTML(N,L){
+  const g=gcd(N,L),n=Math.abs(N)/g,d=L/g,s=N<0?M:'',w=Math.floor(n/d),r=n%d;
+  if(r===0)return `${s}${w}`;
+  return `<span class="mixed">${s}${w?`<b class="whole">${w}</b>`:''}${fr(r,d)}</span>`;
+}
+// Komplett-Rechenweg (nur Stufe 1, dort ohne geführte Schritte)
+function stepsHTML(q){
+  const{ts,N,L}=q,g=gcd(N,L),n=Math.abs(N)/g,d=L/g,any=ts.some(x=>x.w);
+  const sg=x=>x.s<0?M:'+';
+  const imp=ts.map(x=>({s:x.s,n:x.w*x.d+x.n,d:x.d,f:L/x.d}));
+  let h='<ol class="steps">';
+  if(any)h+=`<li><b>Gemischte Zahlen umwandeln:</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
+  h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:L===Math.max(...ts.map(x=>x.d))?`Der größte Nenner ${L} ist ein Vielfaches der anderen, also ist ${L} der Hauptnenner.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
+  h+=`<li><b>Erweitern auf ${L}:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n,x.d)} = ${fr(x.n*x.f,L)}${x.f>1?` <small>(·${x.f})</small>`:''}`).join(' &nbsp; ')}</li>`;
+  h+=`<li><b>Zähler zusammenfassen:</b> ${imp.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.n*x.f}`).join(' ')} = ${N} → ${fr(N<0?M+Math.abs(N):N,L)}</li>`;
+  h+=g>1?`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(N<0?M+n:n,d)}</li>`:`<li><b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1, der Bruch ist schon gekürzt.</li>`;
+  if(n>d&&d>1)h+=`<li><b>Als gemischte Zahl:</b> ${resHTML(N,L)}</li>`;
+  return h+'</ol>';
+}
+
+/* ---------- Geführte Schritte (ab Stufe 2) ---------- */
+const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + Zähler).',
+  frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen. Linker Knopf = Ganze, rechter Knopf = Zähler.',
+  ws:'Ganze und Zähler getrennt zusammenfassen (jeweils mit Vorzeichen). Linker Knopf = Ganze, rechter Knopf = Zähler.',
+  common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
+  sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
+  reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.',
+  mixed:'In eine gemischte Zahl (oder ganze Zahl) umwandeln: Das Minus steht vor der ganzen Zahl.'};
+const fi=()=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" aria-label="Nenner"></span>`;
+const sn=n=>n<0?M+Math.abs(n):n;
+function normWZ(W,Z,L){
+  const tot=W*L+Z;
+  if(tot===0)return{nw:0,nz:0};
+  const s=tot<0?-1:1,absTot=Math.abs(tot);
+  return{nw:s*Math.floor(absTot/L),nz:s*(absTot%L)};
+}
+function isCleanMixed(w,z,L){
+  if(Math.abs(z)>=L)return false;
+  if((w<0&&z>0)||(w>0&&z<0))return false;
+  return true;
+}
+function fmtWZ(w,z,L){
+  const tot=w*L+z;
+  if(tot===0)return '0';
+  if(Math.abs(z)<L&&!((w<0&&z>0)||(w>0&&z<0))){
+    const neg=tot<0,wa=Math.abs(w),za=Math.abs(z);
+    return `<span class="mixed">${neg?M:''}${wa?`<b class="whole">${wa}</b>`:''}${za?fr(za,L):(!wa?'0':'')}</span>`;
+  }
+  return `${w!==0?sn(w):''}${z!==0?(w!==0?` ${z<0?M:'+'} `:(z<0?M:''))+fr(Math.abs(z),L):''}`;
+}
+function chainHTML(k){
+  const q=S.q,{ts,N,L,g,rn,rd}=q,sg=x=>x.s<0?M:'+',im=x=>(x.w*x.d+x.n)*(L/x.d),rs=(N<0?M:'')+rn;
+  const t=f=>ts.map((x,j)=>`${j||x.s<0?sg(x)+' ':''}${f(x)}`).join(' ');
+  const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
+  const{nw,nz}=normWZ(W,Z,L);
+  return{imp:`<b>Unechte Brüche:</b> ${t(x=>fr(x.w*x.d+x.n,x.d))}`,
+    frac:`<b>Bruchteile auf ${L}:</b> ${t(x=>mixed(x.w,x.n*(L/x.d),L))}`,
+    ws:`<b>Getrennt zusammenfassen:</b> Ganze ${t(x=>x.w)} = ${sn(W)} · Zähler ${t(x=>x.n*(L/x.d))} = ${sn(Z)}`,
+    norm:(()=>{const prevW=(q.prevW!==undefined?q.prevW:W),prevZ=(q.prevZ!==undefined?q.prevZ:Z),curW=(q.curW!==undefined?q.curW:nw),curZ=(q.curZ!==undefined?q.curZ:nz);const partial=!isCleanMixed(curW,curZ,L);return`<b>${partial?'Zwischenschritt gemischte Zahl':'Gemischte Zahl bilden'}:</b> aus ${fmtWZ(prevW,prevZ,L)} wird ${fmtWZ(curW,curZ,L)}`;})(),
+    common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
+    sum:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
+    reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
+    mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`,
+    plusImp:`<b>Als unechter Bruch (+1 Bonus):</b> ${resHTML(N,L)} = ${fr(rs,rd)}`}[k];
+}
+function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed';
+  $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${note?` <small>(${note})</small>`:''}</div>`);}
+function adv(rev){const q=S.q;addChain(q.st,rev);q.st++;q.se=0;guide();}
+function miss(m,w){const q=S.q;q.err++;q.se++;
+  if(q.se>=3){adv(true);hint('Nach drei Fehlversuchen wurde die Lösung dieses Schritts übernommen.',1);}else hint(m,w);}
+function guide(){
+  const q=S.q,g=$('guide'),gb=$('gb');$('hint').textContent='';g.classList.remove('hidden');
+  if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
+    $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
+    gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
+    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];finalizeSeq(q);guide();};
+    $('wb').onclick=()=>{
+      const W=q.ts.reduce((s,x)=>s+x.s*x.w,0),Z=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
+      const needsNorm=(Z<0)||(Math.abs(Z)>=q.L)||(W<0&&Z>0)||(W>0&&Z<0);
+      q.seq=needsNorm?['frac','ws','norm','reduce']:['frac','ws','reduce'];
+      finalizeSeq(q);
+      guide();
+    };
+    return;
+  }
+  const k=q.seq[q.st];
+  if(!k){   // Endstufe: bei getrennter Rechnung (ws) ist das Ergebnis bereits als gemischte/ganze Zahl gekürzt; optional unechter Bruch (+1 Bonuspunkt)
+    const isWs=q.seq.includes('ws');
+    if(isWs&&q.imp){
+      if(!q.plusImp){
+        $('gt').textContent='Plus-Aufgabe (+1 Bonuspunkt, optional): Das Ergebnis steht schon als gemischte Zahl da. Gib es optional auch als unechten Bruch an – oder beende jetzt.';
+        gb.innerHTML='<button class="btn btn-ghost" id="gdone">Fertig – die gemischte Zahl genügt</button>';
+        $('gdone').onclick=()=>finish(true,false);
+        $('iw').value='';$('iw').disabled=true;$('iz').value='';$('in').value='';
+        $('ans').classList.remove('hidden');$('iz').focus({preventScroll:true});return;
+      }
+    }
+    if(isWs&&!q.imp)return finish(true);
+    if(!q.mx&&!q.opt)return finish(true);
+    $('gt').textContent=`Schritt ${q.st+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
+    gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
+    if(q.opt)$('gdone').onclick=()=>finish(true);
+    $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
+  }
+  if(k==='mixed'){
+    if(!q.mx&&!q.opt)return finish(true);
+    $('gt').textContent=`Schritt ${q.st+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
+    gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
+    if(q.opt)$('gdone').onclick=()=>finish(true);
+    $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
+  }
+  if(k==='plusImp'){
+    $('gt').textContent=`Schritt ${q.st+1} – Plus-Aufgabe (+1 Bonuspunkt, optional): Das Ergebnis steht schon als gemischte Zahl da. Gib es optional auch als unechten Bruch an – oder beende jetzt.`;
+    gb.innerHTML='<button class="btn btn-ghost" id="gdone">Fertig – die gemischte Zahl genügt</button>';
+    $('gdone').onclick=()=>finish(true,false);
+    $('iw').value='';$('iw').disabled=true;$('iz').value='';$('in').value='';
+    $('ans').classList.remove('hidden');$('iz').focus({preventScroll:true});return;
+  }
+  q.gs=1;q.g2=1;
+  if(k==='ws'){
+    const W=q.ts.reduce((s,x)=>s+x.s*x.w,0),Z=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
+    q.curW=W;q.curZ=Z;
+  }
+  if(k==='norm'&&q.curW===undefined){
+    q.curW=q.ts.reduce((s,x)=>s+x.s*x.w,0);
+    q.curZ=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
+  }
+  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='norm'?`Umwandeln (aktuell: ${fmtWZ(q.curW,q.curZ,q.L)}): Ganze und echten Bruch bilden – Zwischenschritte sind erlaubt. Linker Knopf = Ganze, rechter Knopf = Zähler.`:TT[k]);
+  const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
+  let h;
+  if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
+  else if(k==='frac')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`<b class="whole">${x.w}</b>`:'')+fi()).join('');
+  else if(k==='common')h=q.ts.map((x,i)=>pre(x,i)+fi()).join('');
+  else if(k==='ws'||k==='norm')h='<span class="ws-part">'+sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" aria-label="Ganze"></span><span class="ws-part">'+sb('gsg2')+fi()+'</span>';
+  else h=sb('gsg')+fi();
+  const same=k==='common'&&q.ts.every(x=>x.d===q.ts[0].d)&&!q.ts.some(x=>x.w);
+  gb.innerHTML=h+'<button class="btn btn-primary" id="gchk">Prüfen</button>'+(k==='reduce'?'<button class="btn btn-ghost" id="gno">Nicht kürzbar</button>':'')+(same?'<button class="btn btn-ghost" id="gtake">Nenner sind schon gleich – übernehmen</button>':'');
+  $('gchk').onclick=()=>gcheck();
+  [['gsg','gs'],['gsg2','g2']].forEach(([id,p])=>{const b=$(id);if(b)b.onclick=()=>{q[p]=-q[p];b.textContent=q[p]<0?M:'+';};});
+  if($('gno'))$('gno').onclick=()=>gcheck(true);
+  if($('gtake'))$('gtake').onclick=()=>adv();
+  gb.querySelector('input').focus({preventScroll:true});
+}
+function gcheck(none){
+  const q=S.q,k=q.seq&&q.seq[q.st];if(S.done||!k)return;
+  if(k==='reduce'&&none===true)return q.g===1?adv():miss('Doch, es lässt sich noch kürzen: Zähler und Nenner haben noch einen gemeinsamen Teiler.');
+  const v=[...$('gb').querySelectorAll('input')].map(i=>i.value.trim());
+  if(v.some(s=>/^-/.test(s)))return hint('Schreibe Minuszeichen nicht ins Zahlenfeld – nutze stattdessen den +/−-Knopf davor.');
+  if(v.some(s=>!/^\d+$/.test(s)))return hint('Bitte in alle Felder nur Ziffern eintragen (bei ganzen Zahlen: Nenner 1).');
+  const a=v.map(Number),{ts,N,L}=q;
+  if(k==='imp'){
+    const m=ts.filter(x=>x.w);
+    for(let j=0;j<m.length;j++){const x=m[j];
+      if(a[2*j+1]!==x.d)return miss('Beim Umwandeln bleibt der Nenner gleich.');
+      if(a[2*j]!==x.w*x.d+x.n)return miss(`Der Zähler stimmt nicht: Ganze · Nenner + Zähler, hier ${x.w} · ${x.d} + ${x.n}.`);}
+    return adv();
+  }
+  if(k==='common'||k==='frac'){
+    const ds=a.filter((_,i)=>i%2),ns=a.filter((_,i)=>!(i%2)),ex=x=>(k==='frac'?x.n:x.w*x.d+x.n)*(L/x.d);
+    if(ds.includes(0))return hint('Ein Nenner darf nicht 0 sein.');
+    if(new Set(ds).size>1)return miss('Alle Nenner müssen gleich sein – dafür erweiterst du die Brüche.');
+    if(ds[0]!==L)return miss(ds[0]%L===0?'Das ist ein gemeinsamer Nenner, aber nicht der kleinste. Suche den Hauptnenner (kgV).':'Das ist noch kein gemeinsamer Nenner: Nicht bei jedem Bruch geht der alte Nenner darin auf.',1);
+    const b=ts.findIndex((x,i)=>ns[i]!==ex(x));
+    if(b>=0){const x=ts[b];return miss(`Der Zähler von Bruch ${b+1} stimmt nicht. ${x.w&&k==
+}catch(e){}
   $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
   const auto=S.mode==='adaptive';
   tb.setProgress(auto?S.cnt:0,auto?autoInfo():'');
