@@ -158,7 +158,8 @@ const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + 
   ws:'Ganze und Zähler getrennt zusammenfassen (jeweils mit Vorzeichen). Linker Knopf = Ganze, rechter Knopf = Zähler.',
   common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
   sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
-  reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
+  reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.',
+  mixed:'In eine gemischte Zahl (oder ganze Zahl) umwandeln: Das Minus steht vor der ganzen Zahl.'};
 const fi=()=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" aria-label="Nenner"></span>`;
 const sn=n=>n<0?M+Math.abs(n):n;
 function normWZ(W,Z,L){
@@ -205,7 +206,7 @@ function guide(){
   if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
     $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
     gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
-    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];guide();};
+    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];if(q.rd===1||q.imp)q.seq.push('mixed');guide();};
     $('wb').onclick=()=>{
       const W=q.ts.reduce((s,x)=>s+x.s*x.w,0),Z=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
       const needsNorm=(Z<0)||(Math.abs(Z)>=q.L)||(W<0&&Z>0)||(W>0&&Z<0);
@@ -228,7 +229,14 @@ function guide(){
     }
     if(isWs&&!q.imp)return finish(true);
     if(!q.mx&&!q.opt)return finish(true);
-    $('gt').textContent=`Schritt ${q.seq.length+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
+    $('gt').textContent=`Schritt ${q.st+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
+    gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
+    if(q.opt)$('gdone').onclick=()=>finish(true);
+    $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
+  }
+  if(k==='mixed'){
+    if(!q.mx&&!q.opt)return finish(true);
+    $('gt').textContent=`Schritt ${q.st+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
     gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
     if(q.opt)$('gdone').onclick=()=>finish(true);
     $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
@@ -355,6 +363,7 @@ function newQ(){
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
   q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
   q.seq=q.gd&&q.ts.some(x=>x.w)?null:['common','sum','reduce'];   // null = Wegwahl A/B
+  if(q.seq&&(q.rd===1||q.imp))q.seq.push('mixed');
   $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
@@ -394,11 +403,12 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(q.gd&&!ok){q.err++;q.se++;
     if(q.se>=3)return finish(false);
     return hint('Das ist nicht derselbe Wert. Prüfe Vorzeichen und Werte.');}
+  if(q.gd&&ok&&q.seq&&q.seq[q.st]==='mixed'){addChain(q.st,false);}
   $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
   const q=S.q;S.done=true;S.total++;let msg='';
-  if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
+  if(q.gd&&(q.mx||bonus)&&(!q.seq||q.seq[q.st]!=='mixed'))addChain(q.seq?q.seq.length:q.st,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
     if(bonus){S.score++;msg=(q.seq&&q.seq.includes('ws'))?'+1 Bonuspunkt: Super, Plus-Aufgabe als unechter Bruch gelöst! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
@@ -408,7 +418,7 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
         else{S.cnt=S.thr;msg+='Alle Bausteine und Stufen freigeschaltet – stark!';}}}
   }else{S.streak=0;S.wrong++;
     if(S.mode==='adaptive'&&S.wrong>=2&&S.ai>0){S.ai--;S.cnt=0;S.wrong=0;applyAuto();msg='Zwei Fehler in Folge: ein Schritt zurück.';}}
-  ['iw','iz','in'].forEach(i=>{$(i).disabled=true});$('sg').disabled=true;$('chk').disabled=true;$('guide').classList.add('hidden');
+  ['iw','iz','in'].forEach(i=>$(i).disabled=true);$('sg').disabled=true;$('chk').disabled=true;$('guide').classList.add('hidden');
   const part=fin&&q.gd&&!ok,fb=$('fb');fb.className='feedback feedback--'+(ok?'ok':part?'hint':'bad');
   const res=q.opt?(q.N<0?M:'')+fr(q.rn,q.rd)+' = '+resHTML(q.N,q.L):resHTML(q.N,q.L);
   fb.innerHTML=`<div class="fb-title">${ok?'✔ Richtig!':part?'Gelöst – aber mit Fehlversuchen, das zählt nicht als richtig.':'✘ Leider falsch.'}</div><div class="fb-result">Ergebnis: <span class="expr expr--sm">${res}</span></div>`+(msg?`<p class="fb-note">${msg}</p>`:'');
