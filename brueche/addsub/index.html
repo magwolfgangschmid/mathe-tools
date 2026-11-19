@@ -193,7 +193,7 @@ function chainHTML(k){
     norm:(()=>{const prevW=(q.prevW!==undefined?q.prevW:W),prevZ=(q.prevZ!==undefined?q.prevZ:Z),curW=(q.curW!==undefined?q.curW:nw),curZ=(q.curZ!==undefined?q.curZ:nz);const partial=!isCleanMixed(curW,curZ,L);return`<b>${partial?'Zwischenschritt gemischte Zahl':'Gemischte Zahl bilden'}:</b> aus ${fmtWZ(prevW,prevZ,L)} wird ${fmtWZ(curW,curZ,L)}`;})(),
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
     sum:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
-    reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
+    reduce:(()=>{const pN=(q.prevN!==undefined?q.prevN:N),pD=(q.prevD!==undefined?q.prevD:L),cN=(q.curN!==undefined?q.curN:(N<0?M+rn:rn)),cD=(q.curD!==undefined?q.curD:rd);const stepG=gcd(Math.abs(pN),pD);if(pD===cD&&stepG===1)return`<b>Kürzen:</b> ggT(${Math.abs(pN)}, ${pD}) = 1 → schon gekürzt: ${fr(cN,cD)}`;return`<b>Kürzen:</b> ${fr(pN,pD)} → ${fr(cN,cD)}`;})(),
     mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`,
     plusImp:`<b>Als unechter Bruch (+1 Bonus):</b> ${resHTML(N,L)} = ${fr(rs,rd)}`}[k];
 }
@@ -259,7 +259,8 @@ function guide(){
     q.curW=q.ts.reduce((s,x)=>s+x.s*x.w,0);
     q.curZ=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
   }
-  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='norm'?`Umwandeln (aktuell: ${fmtWZ(q.curW,q.curZ,q.L)}): Ganze und echten Bruch bilden – Zwischenschritte sind erlaubt. Linker Knopf = Ganze, rechter Knopf = Zähler.`:TT[k]);
+  if(k==='reduce'&&q.curN===undefined){q.curN=N;q.curD=L;}
+  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='norm'?`Umwandeln (aktuell: ${fmtWZ(q.curW,q.curZ,q.L)}): Ganze und echten Bruch bilden – Zwischenschritte sind erlaubt. Linker Knopf = Ganze, rechter Knopf = Zähler.`:k==='reduce'&&q.curD!==L?`Weiter kürzen (aktuell: ${fr(q.curN,q.curD)}): Teile Zähler und Nenner weiter durch denselben Teiler – oder bestätige, wenn nichts mehr geht.`:TT[k]);
   const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
   let h;
   if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
@@ -359,15 +360,26 @@ function gcheck(none){
     if(d!==L)return miss(`Beim Addieren und Subtrahieren bleibt der Nenner gleich: ${L}.`);
     return miss(Math.abs(val)===Math.abs(N)?'Der Betrag stimmt, aber das Vorzeichen nicht: Achte auf Plus und Minus vor den Brüchen.':'Der Zähler stimmt nicht: Addiere bzw. subtrahiere die erweiterten Zähler, wie es die Vorzeichen vorgeben.');
   }
+  const curN=(q.curN!==undefined?q.curN:N),curD=(q.curD!==undefined?q.curD:L);
   if(val*L!==N*d)return miss(Math.abs(val)*L===Math.abs(N)*d?'Der Betrag stimmt, aber das Vorzeichen nicht.':'Beim Kürzen darf sich der Wert nicht ändern: Teile Zähler und Nenner durch dieselbe Zahl.');
-  if(d===q.rd)return adv();
-  return miss(d>L?'Du sollst kürzen, nicht erweitern.':d===L?'Der Bruch ist noch nicht gekürzt – Zähler und Nenner haben noch einen gemeinsamen Teiler.':'Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt – geht es noch weiter?',1);
+  if(d===q.rd){q.prevN=curN;q.prevD=curD;q.curN=val;q.curD=d;return adv();}
+  if(d>curD)return miss('Du sollst kürzen, nicht erweitern.');
+  if(d===curD)return miss('Der Bruch ist noch nicht gekürzt – Zähler und Nenner haben noch einen gemeinsamen Teiler.');
+  if(d<curD&&d>q.rd){
+    q.prevN=curN;q.prevD=curD;q.curN=val;q.curD=d;
+    const stepIdx=q.st;
+    q.seq.splice(q.st,0,'reduce');
+    addChain(stepIdx,false,'Zwischenschritt');
+    q.st++;q.se=0;guide();
+    return hint('Zwischenschritt gekürzt – weiter geht’s!',2);
+  }
+  return miss('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt – geht es noch weiter?',1);
 }
 
 /* ---------- Aufgabe, Prüfung, Auswertung ---------- */
 function newQ(){
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
-  q.gd=S.level>=GUIDED_AB;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;q.prevW=undefined;q.prevZ=undefined;q.curW=undefined;q.curZ=undefined;
+  q.gd=S.level>=GUIDED_AB;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;q.prevW=undefined;q.prevZ=undefined;q.curW=undefined;q.curZ=undefined;q.prevN=undefined;q.prevD=undefined;q.curN=undefined;q.curD=undefined;
   q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
   q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
