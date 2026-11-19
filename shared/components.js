@@ -140,6 +140,8 @@
        threshold      richtige Aufgaben in Folge bis zum Aufstieg (Standard: 5)
        min, max       Bereich des Reglers (Standard: 3 bis 7)
        label-practice, label-rules, label-manual, label-adaptive   eigene Beschriftungen
+       slider-text    Text über dem Regler, {n} = Schwellenwert
+                      (Standard: "Aufstieg nach {n} richtigen Aufgaben in Folge")
 
      Ereignisse (bubbeln, nur bei Bedienung durch die Person):
        tabchange        detail: { tab }
@@ -155,7 +157,7 @@
   class AppModeToolbar extends HTMLElement {
     static get observedAttributes() {
       return ['show-tabs', 'show-mode', 'show-slider', 'tab', 'mode', 'threshold', 'min', 'max',
-              'label-practice', 'label-rules', 'label-manual', 'label-adaptive'];
+              'label-practice', 'label-rules', 'label-manual', 'label-adaptive', 'slider-text'];
     }
 
     get tab() { return this.getAttribute('tab') === 'rules' ? 'rules' : 'practice'; }
@@ -184,7 +186,7 @@
               '<button type="button" class="chip chip--grow" data-mode="adaptive" data-ref="mAdaptive"></button>' +
             '</div></div>' +
             '<div class="stack-sm" data-ref="sliderBox">' +
-              '<label class="lbl" for="' + id + '">Aufstieg nach <span data-ref="val"></span> richtigen Aufgaben in Folge</label>' +
+              '<label class="lbl" for="' + id + '"><span data-ref="lpre"></span><span data-ref="val"></span><span data-ref="lpost"></span></label>' +
               '<input id="' + id + '" type="range" step="1" data-ref="range">' +
               '<div class="progress"><div data-ref="bar"></div></div>' +
               '<p class="mute small" data-ref="info"></p>' +
@@ -259,6 +261,10 @@
       r.range.max = this.max;
       r.range.value = this.threshold;
       r.val.textContent = this.threshold;
+      // slider-text: eigener Text, {n} steht für den Schwellenwert
+      const tx = (this.getAttribute('slider-text') || 'Aufstieg nach {n} richtigen Aufgaben in Folge').split('{n}');
+      r.lpre.textContent = tx[0];
+      r.lpost.textContent = tx[1] || '';
       this._paintBar();
     }
   }
