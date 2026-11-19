@@ -27,7 +27,7 @@
 
 <div class="app">
 
-<app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="manual" threshold="5" label-adaptive="Auto" slider-text="Nächster Baustein bzw. nächste Stufe nach {n} richtigen Aufgaben"></app-mode-toolbar>
+<app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="5" label-adaptive="Auto" slider-text="Nächster Baustein bzw. nächste Stufe nach {n} richtigen Aufgaben"></app-mode-toolbar>
 
 <section class="card pad stack">
   <div>
@@ -47,6 +47,7 @@
   <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
   <div class="card stat"><div class="mute xs">Richtig</div><div id="sRate" class="stat-value">0/0</div></div>
 </section>
+<div class="row" style="justify-content:flex-end"><button id="resetScore" type="button" class="btn btn-ghost small">Punkte zurücksetzen</button></div>
 
 <section class="card pad pad-lg stack" aria-live="polite">
   <div id="qMeta" class="mute small"></div>
@@ -74,7 +75,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',7],['B',6],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'manual',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -118,6 +119,9 @@ function make(want){
     const N=ts.reduce((a,x)=>a+x.s*(x.w*x.d+x.n)*(Lc/x.d),0);
     if(N===0||(!S.neg&&N<0))continue;
     if(t<300&&(gcd(Math.abs(N),Lc)>1)!==want)continue;   // Quote kürzbar / nicht kürzbar
+    const key=ts.map(x=>`${x.s}:${x.w}:${x.n}/${x.d}`).sort().join('|');
+    if(t<320&&S.seen.includes(key))continue;             // Wiederholung der letzten Aufgaben vermeiden
+    S.seen.push(key);if(S.seen.length>6)S.seen.shift();
     return{ts,N,L:Lc,relax};
   }
   return{ts:[{s:1,w:0,n:1,d:2,v:''},{s:1,w:0,n:1,d:2,v:''}],N:2,L:2};
@@ -154,18 +158,9 @@ const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + 
   ws:'Ganze und Zähler getrennt zusammenfassen (jeweils mit Vorzeichen).',
   common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
   sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
-  reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.',
-  mixed:'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.',
-  plusImp:'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.',
-  int:'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.'};
+  reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
 const fi=()=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" aria-label="Nenner"></span>`;
 const sn=n=>n<0?M+Math.abs(n):n;
-// Letzte Schritte der Sequenz: 'plusImp' (Weg B, optional) bzw. 'mixed' (ganze/gemischte Zahl)
-function finalizeSeq(q){
-  if(q.gd){if(q.seq.includes('ws')&&q.imp)q.seq.push('plusImp');else if(q.int||q.imp)q.seq.push('mixed');}
-  q.opt=q.imp&&(!q.req||q.seq.includes('plusImp'));   // unechter Bruch erlaubt, gemischte Zahl = Bonus
-}
-const isOpt=(q,k)=>k==='plusImp'||(k==='mixed'&&!q.req);
 function chainHTML(k){
   const q=S.q,{ts,N,L,g,rn,rd}=q,sg=x=>x.s<0?M:'+',im=x=>(x.w*x.d+x.n)*(L/x.d),rs=(N<0?M:'')+rn;
   const t=f=>ts.map((x,j)=>`${j||x.s<0?sg(x)+' ':''}${f(x)}`).join(' ');
@@ -176,10 +171,9 @@ function chainHTML(k){
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
     sum:q.seq.includes('ws')?`<b>Zu einem Bruch:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}`:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
     reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
-    mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`,
-    plusImp:`<b>Als gemischte Zahl (Bonus):</b> ${fr(rs,rd)} = ${resHTML(N,L)}`}[k];
+    mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`}[k];
 }
-function addChain(i,rev,note){const q=S.q,k=q.seq[i];
+function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed';
   $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${note?` <small>(${note})</small>`:''}</div>`);}
 function adv(rev){const q=S.q;addChain(q.st,rev);q.st++;q.se=0;guide();}
 function miss(m,w){const q=S.q;q.err++;q.se++;
@@ -189,20 +183,20 @@ function guide(){
   if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
     $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
     gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
-    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];finalizeSeq(q);guide();};
-    $('wb').onclick=()=>{q.seq=['frac','ws','sum','reduce'];finalizeSeq(q);guide();};
+    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];guide();};
+    $('wb').onclick=()=>{q.seq=['frac','ws','sum','reduce'];guide();};
     return;
   }
   const k=q.seq[q.st];
-  if(!k)return finish(true);
-  const o=isOpt(q,k);
-  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':k==='mixed'&&q.int?TT.int:k==='mixed'&&o?TT.plusImp:TT[k]);
-  if(k==='mixed'||k==='plusImp'){   // Eingabe über das Antwortfeld
-    gb.innerHTML=o?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
-    if(o)$('gdone').onclick=()=>{q.st++;finish(true);};
+  if(!k){   // Endstufe: gemischte Zahl (Pflicht oder optional) bzw. ganze Zahl
+    if(!q.mx&&!q.opt)return finish(true);
+    $('gt').textContent=`Schritt ${q.seq.length+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
+    gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
+    if(q.opt)$('gdone').onclick=()=>finish(true);
     $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
   }
-  $('ans').classList.add('hidden');q.gs=1;q.g2=1;
+  q.gs=1;q.g2=1;
+  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':TT[k]);
   const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
   let h;
   if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
@@ -220,7 +214,6 @@ function guide(){
 }
 function gcheck(none){
   const q=S.q,k=q.seq&&q.seq[q.st];if(S.done||!k)return;
-  if(k==='mixed'||k==='plusImp')return check();
   if(k==='reduce'&&none===true)return q.g===1?adv():miss('Doch, es lässt sich noch kürzen: Zähler und Nenner haben noch einen gemeinsamen Teiler.');
   const v=[...$('gb').querySelectorAll('input')].map(i=>i.value.trim());
   if(v.some(s=>!/^\d+$/.test(s)))return hint('Bitte in alle Felder nur Ziffern eintragen (bei ganzen Zahlen: Nenner 1).');
@@ -272,10 +265,10 @@ function newQ(){
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
   q.gd=S.level>=GUIDED_AB;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
   q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
-  q.int=q.rd===1;q.imp=!q.int&&q.rn>q.rd;   // ganzzahliges bzw. unechtes Ergebnis
-  q.req=q.int||S.mix;                        // Umwandlung Pflicht (sonst optional, +1 Bonuspunkt)
+  q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
+  q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
+  q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
   q.seq=q.gd&&q.ts.some(x=>x.w)?null:['common','sum','reduce'];   // null = Wegwahl A/B
-  if(q.seq)finalizeSeq(q);
   $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
@@ -286,7 +279,6 @@ function newQ(){
 }
 function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(S.done)return;const q=S.q;
-  if(q.gd&&!['mixed','plusImp'].includes(q.seq&&q.seq[q.st]))return;
   const wr=$('iw').value.trim().replace('−','-'),z=$('iz').value.trim(),n=$('in').value.trim();
   if(/[-−]/.test(z+n))return hint('Das Minus steht nur vor der ganzen Zahl (Knopf oder Feld „ganz“), nicht im Zähler oder Nenner.');
   const m=wr.match(/^(-?)(\d*)$/);
@@ -298,21 +290,19 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(!z&&!w)return hint('Trage eine Zahl ein.');
   if(z&&!zero&&+n===0)return hint('Der Nenner darf nicht 0 sein.');
   const W=+w||0,Z=zero?0:+z,D=z&&!zero?+n:1,val=sg*(W*D+Z),ok=val*q.L===q.N*D;
-  const k=q.gd&&q.seq[q.st],req=q.gd?k==='mixed'&&!isOpt(q,k):q.req,opt=q.gd?isOpt(q,k):q.opt;
   if(ok&&Z>0){
     if(W>0&&Z>=D)return hint('Der Bruchteil muss kleiner als 1 sein – rechne ganze Zahlen zu den Ganzen.',true);
     if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
-    if(W===0&&Z>=D&&(req||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
+    if(W===0&&Z>=D&&(S.mix||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
   }
   if(q.gd&&!ok){q.err++;q.se++;
-    if(q.se>=3){addChain(q.st,true);q.st++;return finish(false);}
+    if(q.se>=3)return finish(false);
     return hint('Das ist nicht derselbe Wert. Teile den Zähler durch den Nenner: Der Quotient ist die ganze Zahl, der Rest der neue Zähler.');}
-  $('hint').textContent='';
-  if(q.gd){if(!opt||W>0)addChain(q.st);q.st++;}
-  finish(ok,ok&&opt&&W>0&&Z>0);
+  $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
   const q=S.q;S.done=true;S.total++;let msg='';
+  if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
     if(bonus){S.score++;msg='+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
@@ -346,17 +336,17 @@ function cfg(){
   const chip=(d,on,pro,sub)=>`<button class="chip${pro?' chip--pro':''}${on?' is-active':''}" aria-pressed="${on}" data-b="${d}">${d}${sub?`<small>${sub}</small>`:''}</button>`;
   $('bl').innerHTML=BL.map(d=>chip(d,S.bl.has(d),false,SUB[d]||'')).join('')+PRO.map(d=>chip(d,S.bl.has(d),true,'Profi')).join('');
   $('bl').querySelectorAll('button').forEach(b=>{b.disabled=auto;b.onclick=()=>{const d=+b.dataset.b;
-    if(S.bl.has(d)){if(S.bl.size>1)S.bl.delete(d);}else S.bl.add(d);cfg();if(!S.done)newQ();};});
+    if(S.bl.has(d)){if(S.bl.size>1)S.bl.delete(d);}else S.bl.add(d);S.seen=[];cfg();if(!S.done)newQ();};});
   $('bnote').textContent=auto?'Auto-Modus: Die Bausteine werden nach und nach automatisch freigeschaltet.':'Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.';
   const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['three','3 Summanden']];
   $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' is-active':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
-  $('tg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];cfg();if(!S.done)newQ();});
+  $('tg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();});
   $('manualBox').classList.toggle('hidden',S.mode!=='manual');
   $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' is-active':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
-  $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;cfg();newQ();});
+  $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
   stats();
 }
-function setMode(m){S.mode=m;S.cnt=0;S.wrong=0;if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ();}
+function setMode(m){S.mode=m;S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ();}
 tb.addEventListener('modechange',e=>setMode(e.detail.mode));
 tb.addEventListener('thresholdchange',e=>{S.thr=e.detail.value;stats();});
 $('sg').onclick=()=>{S.sign=-S.sign;$('sg').textContent=S.sign<0?M:'+';};
@@ -365,9 +355,16 @@ $('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textC
 $('next').onclick=newQ;
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
   if(S.done)newQ();else if(S.q.gd&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
+function resetScore(){
+  S.score=0;S.streak=0;S.best=0;S.right=0;S.total=0;S.cnt=0;S.wrong=0;
+  try{localStorage.removeItem('bz');}catch(e){}
+  stats();
+}
+$('resetScore').onclick=resetScore;
 try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
 S.thr=tb.threshold;
 cfg();newQ();
 </script>
 </body>
 </html>
+
