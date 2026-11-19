@@ -151,6 +151,7 @@ function stepsHTML(q){
   if(n>d&&d>1)h+=`<li><b>Als gemischte Zahl:</b> ${resHTML(N,L)}</li>`;
   return h+'</ol>';
 }
+
 /* ---------- Geführte Schritte (ab Stufe 2) ---------- */
 const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + Zähler).',
   frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen. Linker Knopf = Ganze, rechter Knopf = Zähler.',
@@ -160,15 +161,23 @@ const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + 
   reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
 const fi=()=>`<span class="answer-frac"><input class="input" inputmode="numeric" autocomplete="off" aria-label="Zähler"><div class="bar"></div><input class="input" inputmode="numeric" autocomplete="off" aria-label="Nenner"></span>`;
 const sn=n=>n<0?M+Math.abs(n):n;
+function normWZ(W,Z,L){
+  const tot=W*L+Z;
+  if(tot===0)return{nw:0,nz:0};
+  const s=tot<0?-1:1,absTot=Math.abs(tot);
+  return{nw:s*Math.floor(absTot/L),nz:s*(absTot%L)};
+}
 function chainHTML(k){
   const q=S.q,{ts,N,L,g,rn,rd}=q,sg=x=>x.s<0?M:'+',im=x=>(x.w*x.d+x.n)*(L/x.d),rs=(N<0?M:'')+rn;
   const t=f=>ts.map((x,j)=>`${j||x.s<0?sg(x)+' ':''}${f(x)}`).join(' ');
   const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
+  const{nw,nz}=normWZ(W,Z,L);
   return{imp:`<b>Unechte Brüche:</b> ${t(x=>fr(x.w*x.d+x.n,x.d))}`,
     frac:`<b>Bruchteile auf ${L}:</b> ${t(x=>mixed(x.w,x.n*(L/x.d),L))}`,
     ws:`<b>Getrennt zusammenfassen:</b> Ganze ${t(x=>x.w)} = ${sn(W)} · Zähler ${t(x=>x.n*(L/x.d))} = ${sn(Z)}`,
+    norm:(()=>{const tot=W*L+Z,negTot=tot<0;const wAbs=Math.abs(nw),zAbs=Math.abs(nz);const disp=(negTot?M:'')+(wAbs?`<b class="whole">${wAbs}</b>`:'')+(zAbs?fr(zAbs,L):(!wAbs?`0`:''));return`<b>Gemischte Zahl bilden:</b> aus ${sn(W)} und ${fr(sn(Z),L)} wird <span class="mixed">${disp}</span>`;})(),
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
-    sum:q.seq.includes('ws')?`<b>Zu einem Bruch:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}`:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
+    sum:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
     reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
     mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`}[k];
 }
@@ -183,24 +192,27 @@ function guide(){
     $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
     gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
     $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];guide();};
-    $('wb').onclick=()=>{q.seq=['frac','ws','sum','reduce'];guide();};
+    $('wb').onclick=()=>{
+      const W=q.ts.reduce((s,x)=>s+x.s*x.w,0),Z=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
+      const needsNorm=(Z<0)||(Math.abs(Z)>=q.L)||(W<0&&Z>0)||(W>0&&Z<0);
+      q.seq=needsNorm?['frac','ws','norm','reduce']:['frac','ws','reduce'];
+      guide();
+    };
     return;
   }
   const k=q.seq[q.st];
-  if(!k){   // Endstufe: bei getrennter Rechnung (ws) mit gemischter Zahl/unechtem Bruch zuerst gemischte Zahl, danach optional unechter Bruch (+1 Bonuspunkt)
-    const wsMix=q.seq.includes('ws')&&(q.imp||q.mx);
-    if(wsMix&&!q.plusImp){
-      $('gt').textContent=`Schritt ${q.seq.length+1} – Gemischte Zahl: Gib das Ergebnis als gemischte Zahl ein. Das Minus steht vor der ganzen Zahl.`;
-      gb.innerHTML='';
-      $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
+  if(!k){   // Endstufe: bei getrennter Rechnung (ws) ist das Ergebnis bereits als gemischte/ganze Zahl gekürzt; optional unechter Bruch (+1 Bonuspunkt)
+    const isWs=q.seq.includes('ws');
+    if(isWs&&q.imp){
+      if(!q.plusImp){
+        $('gt').textContent='Plus-Aufgabe (+1 Bonuspunkt, optional): Das Ergebnis steht schon als gemischte Zahl da. Gib es optional auch als unechten Bruch an – oder beende jetzt.';
+        gb.innerHTML='<button class="btn btn-ghost" id="gdone">Fertig – die gemischte Zahl genügt</button>';
+        $('gdone').onclick=()=>finish(true,false);
+        $('iw').value='';$('iw').disabled=true;$('iz').value='';$('in').value='';
+        $('ans').classList.remove('hidden');$('iz').focus({preventScroll:true});return;
+      }
     }
-    if(wsMix&&q.plusImp){
-      $('gt').textContent='Plus-Aufgabe (+1 Bonuspunkt, optional): Gib das Ergebnis auch als unechten Bruch an – oder beende jetzt.';
-      gb.innerHTML='<button class="btn btn-ghost" id="gdone">Fertig – die gemischte Zahl genügt</button>';
-      $('gdone').onclick=()=>finish(true,false);
-      $('iw').value='';$('iw').disabled=true;$('iz').value='';$('in').value='';
-      $('ans').classList.remove('hidden');$('iz').focus({preventScroll:true});return;
-    }
+    if(isWs&&!q.imp)return finish(true);
     if(!q.mx&&!q.opt)return finish(true);
     $('gt').textContent=`Schritt ${q.seq.length+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
     gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
@@ -208,13 +220,13 @@ function guide(){
     $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
   }
   q.gs=1;q.g2=1;
-  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':TT[k]);
+  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='norm'?'In eine „richtige“ gemischte Zahl umwandeln: Ganze und echten Bruch (mit passendem Vorzeichen) bilden. Linker Knopf = Ganze, rechter Knopf = Zähler.':TT[k]);
   const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
   let h;
   if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
   else if(k==='frac')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`<b class="whole">${x.w}</b>`:'')+fi()).join('');
   else if(k==='common')h=q.ts.map((x,i)=>pre(x,i)+fi()).join('');
-  else if(k==='ws')h='<span class="ws-part">'+sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" aria-label="Ganze"></span><span class="ws-part">'+sb('gsg2')+fi()+'</span>';
+  else if(k==='ws'||k==='norm')h='<span class="ws-part">'+sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" aria-label="Ganze"></span><span class="ws-part">'+sb('gsg2')+fi()+'</span>';
   else h=sb('gsg')+fi();
   const same=k==='common'&&q.ts.every(x=>x.d===q.ts[0].d)&&!q.ts.some(x=>x.w);
   gb.innerHTML=h+'<button class="btn btn-primary" id="gchk">Prüfen</button>'+(k==='reduce'?'<button class="btn btn-ghost" id="gno">Nicht kürzbar</button>':'')+(same?'<button class="btn btn-ghost" id="gtake">Nenner sind schon gleich – übernehmen</button>':'');
@@ -253,19 +265,31 @@ function gcheck(none){
     if(dIn!==L)return miss(`Der Nenner bleibt der Hauptnenner ${L}.`);
     if(wIn===W&&zIn===Z)return adv();
     if(wIn*L+zIn===W*L+Z){
-      if(Z<0&&zIn>0)return miss(`Dein Bruchteil ist negativ (${Z}/${L}): Nutze den rechten +/−-Knopf für das Minus beim Zähler und trage ${Math.abs(Z)} ein (oder borge 1 Ganzes, also ${W-1} Ganze und ${L+Z}/${L}).`,1);
-      if(zIn>=L||zIn<=-L)return miss(`Der Zählerbetrag ist größer oder gleich ${L}: Du kannst ganze Nenner in die Ganzen ziehen und den Rest im Zähler lassen.`,1);
+      if(Z<0&&zIn>0)return miss(`Dein Bruchteil ist negativ (${Z}/${L}): Nutze den rechten +/−-Knopf für das Minus beim Zähler und trage ${Math.abs(Z)} ein.`,1);
+      if(zIn>=L||zIn<=-L)return miss(`Der Zählerbetrag ist größer oder gleich ${L}: Im Schritt „Getrennt zusammenfassen“ bleibt der erweiterte Zähler zunächst noch ungekürzt/ungestutzt.`,1);
       return miss('Der Gesamtwert stimmt – prüfe, ob Vorzeichen (linker Knopf = Ganze, rechter Knopf = Zähler) und Aufteilung passen.',1);
     }
     if(wIn!==W){
-      const wHint=Z<0?'Die Ganzen stimmen nicht: Rechne Ganze mit Ganzen mit Vorzeichen (und falls du ein Ganzes borgst, ziehe 1 ab und addiere den Nenner zum Zähler).':'Die Ganzen stimmen nicht: Rechne Ganze mit Ganzen, mit Vorzeichen (linker Knopf).';
-      return miss(wHint);
+      return miss('Die Ganzen stimmen nicht: Rechne Ganze mit Ganzen mit Vorzeichen (linker Knopf).');
     }
     if(zIn!==Z){
       const zHint=Z<0?`Der Zähler stimmt nicht: Hier entsteht ein negativer Zähler (${Z}). Stelle den rechten Knopf auf − und gib ${Math.abs(Z)} ein.`:'Der Zähler stimmt nicht: Addiere bzw. subtrahiere die erweiterten Zähler mit Vorzeichen (rechter Knopf).';
       return miss(zHint);
     }
     return adv();
+  }
+  if(k==='norm'){
+    const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
+    const{nw,nz}=normWZ(W,Z,L);
+    const wIn=q.gs*a[0],zIn=q.g2*a[1],dIn=a[2];
+    if(dIn!==L)return miss(`Der Nenner bleibt ${L}.`);
+    if(wIn===nw&&zIn===nz)return adv();
+    if(wIn*L+zIn===W*L+Z){
+      if(Math.abs(zIn)>=L)return miss(`Der Bruchteil muss ein echter Bruch sein (Betrag des Zählers kleiner als ${L}). Ziehe volle ${L}er zu den Ganzen.`,1);
+      if((wIn<0&&zIn>0)||(wIn>0&&zIn<0))return miss('Ganze und Bruchteil sollen dasselbe Vorzeichen haben (oder bei 0 den jeweiligen Teil auf 0 setzen).',1);
+      return miss('Der Wert stimmt, aber wandle noch in eine saubere gemischte Zahl mit echtem Bruch um.',1);
+    }
+    return miss(`Nicht ganz: Aus ${sn(W)} und ${fr(sn(Z),L)} wird ${sn(nw)} und ${fr(sn(nz),L)}. Achte auf die Vorzeichen-Knöpfe links und rechts.`);
   }
   const val=q.gs*a[0],d=a[1];
   if(!d)return hint('Der Nenner darf nicht 0 sein.');
@@ -321,8 +345,8 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
     if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
     if(W===0&&Z>=D&&(S.mix||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
   }
-  const wsMix=q.gd&&q.seq&&q.seq.includes('ws')&&(q.imp||q.mx);
-  if(wsMix&&q.plusImp){
+  const isWs=q.gd&&q.seq&&q.seq.includes('ws');
+  if(isWs&&q.imp){
     const impOk=ok&&w===''&&Z>=D&&D===q.rd;
     if(!impOk){
       q.err++;q.se++;
@@ -333,11 +357,7 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   }
   if(q.gd&&!ok){q.err++;q.se++;
     if(q.se>=3)return finish(false);
-    return hint('Das ist nicht derselbe Wert. Teile den Zähler durch den Nenner: Der Quotient ist die ganze Zahl, der Rest der neue Zähler.');}
-  if(wsMix&&ok){
-    if(!(W>0&&Z>0))return hint('Gib das Ergebnis als gemischte Zahl an (Ganze und Bruchteil).',1);
-    q.plusImp=true;q.se=0;$('hint').textContent='';guide();return;
-  }
+    return hint('Das ist nicht derselbe Wert. Prüfe Vorzeichen und Werte.');}
   $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
@@ -345,7 +365,7 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
   if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
-    if(bonus){S.score++;msg=(q.seq&&q.seq.includes('ws')&&q.plusImp)?'+1 Bonuspunkt: Super, Plus-Aufgabe als unechter Bruch gelöst! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
+    if(bonus){S.score++;msg=(q.seq&&q.seq.includes('ws'))?'+1 Bonuspunkt: Super, Plus-Aufgabe als unechter Bruch gelöst! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
     if(S.mode==='adaptive'){S.cnt++;
       if(S.cnt>=S.thr){
         if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
