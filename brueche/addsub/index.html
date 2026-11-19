@@ -206,15 +206,25 @@ function miss(m,w){const q=S.q;q.err++;q.se++;
 function guide(){
   const q=S.q,g=$('guide'),gb=$('gb');$('hint').textContent='';g.classList.remove('hidden');
   if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
+    $('ans').classList.add('hidden');
     $('gt').textContent='In der Aufgabe stecken gemischte Zahlen. Wähle deinen Lösungsweg:';
     gb.innerHTML='<button class="btn btn-ghost" id="wa">Weg A: erst in unechte Brüche umwandeln</button><button class="btn btn-ghost" id="wb">Weg B: Ganze und Bruchteile getrennt</button>';
-    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];finalizeSeq(q);guide();};
+    const afterPick=(wayLabel)=>{
+      finalizeSeq(q);
+      if(q.gd){guide();}
+      else{
+        g.classList.add('hidden');
+        $('ans').classList.remove('hidden');
+        hint(`Gewählt: ${wayLabel}. Trage das Endergebnis unten ein.`,2);
+        $('iw').focus({preventScroll:true});
+      }
+    };
+    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];afterPick('Weg A (unechte Brüche)');};
     $('wb').onclick=()=>{
       const W=q.ts.reduce((s,x)=>s+x.s*x.w,0),Z=q.ts.reduce((s,x)=>s+x.s*x.n*(q.L/x.d),0);
       const needsNorm=(Z<0)||(Math.abs(Z)>=q.L)||(W<0&&Z>0)||(W>0&&Z<0);
       q.seq=needsNorm?['frac','ws','norm','reduce']:['frac','ws','reduce'];
-      finalizeSeq(q);
-      guide();
+      afterPick('Weg B (Ganze und Bruchteile getrennt)');
     };
     return;
   }
@@ -397,15 +407,16 @@ function finalizeSeq(q){
   }
 }
 
-  q.seq=q.gd&&q.ts.some(x=>x.w)?null:['common','sum','reduce'];   // null = Wegwahl A/B
+  const hasMix=q.ts.some(x=>x.w);
+  q.seq=hasMix?null:['common','sum','reduce'];   // null = Wegwahl A/B (auch auf Stufe 1)
   finalizeSeq(q);
   $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
   $('sg').textContent='+';$('hint').textContent='';
   ['fb','steps','rw','next','guide'].forEach(i=>$(i).classList.add('hidden'));
-  $('ans').classList.toggle('hidden',q.gd);
-  if(q.gd)guide();else $('iw').focus({preventScroll:true});
+  $('ans').classList.toggle('hidden',q.gd||hasMix);
+  if(q.gd||hasMix)guide();else $('iw').focus({preventScroll:true});
 }
 function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(S.done)return;const q=S.q;
