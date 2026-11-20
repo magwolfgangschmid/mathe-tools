@@ -5,21 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bruchrechnen: Kürzen, Erweitern, Multiplizieren, Dividieren</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
 
 <!-- Zentrales Design und Komponenten (GitHub Pages, Unterordner) -->
-<link rel="stylesheet" href="../../shared/style.css">
-<script src="../../shared/components.js"></script>
+<link rel="stylesheet" href="../../shared/style.css?v=2026-11-20">
+<script src="../../shared/components.js?v=2026-11-20"></script>
 <style>
-#tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
-#tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
-#tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
-.score-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem;margin-top:.4rem}
-.score-actions .btn{flex:0 0 auto;white-space:nowrap}
-#mentalBtn.is-active{background:var(--acc);color:#fff;border-color:var(--acc)}
-.fin{display:inline-flex;flex-direction:row;align-items:center;gap:.4rem;vertical-align:middle}
-.fin .fin-w{align-self:center;width:3.6rem;text-align:center}
-.fin .answer-frac{display:inline-flex;flex-direction:column;align-items:center}
+/* App-spezifisch (alles Übrige liegt in shared/style.css) */
+.score-actions{margin-top:.4rem}
 </style>
 </head>
 <body>
@@ -28,7 +22,7 @@
 
 <main class="app">
 
-  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="manual" threshold="5" label-adaptive="Auto"></app-mode-toolbar>
+  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="manual" threshold="5" label-adaptive="Auto" collapsible-auto></app-mode-toolbar>
 
   <section class="card pad stack" aria-label="Einstellungen">
     <div>
@@ -42,7 +36,7 @@
     </div>
     <div>
       <h2>Zusatz-Schalter</h2>
-      <div id="tg" class="row"></div>
+      <div id="tg" class="row switch-grid"></div>
       <p class="mute xs note">Negative Zahlen, gemischte Zahlen und unechte Brüche wirken in allen Stufen.</p>
     </div>
     <div id="manualBox"><h2>Stufe</h2><div id="lvls" class="grid-2"></div></div>
@@ -97,7 +91,7 @@ const CATS = [
 // Auto-Modus: schrittweise Freischaltung
 const AUTO = [[2, 3], [4, 5, 10], [6, 7, 8, 9, 12], [14, 15, 16, 18, 20], [11, 13, 19, 21, 25]];
 const LV = ["Kürzen & Erweitern", "Multiplikation I", "Multiplikation II", "Dividieren"];
-const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, imp: false, extMode: "auto", mental: false, mode: "manual", autoOpen: false, level: 1, thr: tb.threshold,
+const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, imp: false, extMode: "auto", mental: false, mode: "manual", level: 1, thr: tb.threshold,
   score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0, task: null, steps: [], step: 0, errs: 0, done: false, chain: []};
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -143,7 +137,8 @@ function build(level, pool) {
       if (S.imp && !S.mix && n0 <= d0) continue;
       if (!S.imp && n0 >= d0 && Math.random() < .8) continue;
       const k = pick(pool); if (n0 * k > 300 || d0 * k > 300) continue;
-      const w = S.mix ? rnd(1, 3) : 0;
+      if (S.mix && !S.imp && n0 > d0) continue;                       // gemischte Zahl braucht echten Bruchteil
+      const w = S.mix && n0 < d0 && (!S.imp || Math.random() < .5) ? rnd(1, 3) : 0;
       const kind = S.extMode === "force" ? "ext" : "red";
       return kind === "red"
         ? {level, kind: "red", s: sg, w, n0, d0, n: n0 * k, d: d0 * k}
@@ -152,8 +147,8 @@ function build(level, pool) {
     const o = [operand(pool, level >= 3), operand(pool, level >= 3)];
     if (!o[0] || !o[1]) continue;
     if (S.mix) {
-      o.forEach(x => { if (Math.random() < .75) x.w = rnd(1, 3); });
-      if (!o[0].w && !o[1].w) pick(o).w = rnd(1, 3);
+      o.forEach(x => { if (x.n < x.d && Math.random() < .75) x.w = rnd(1, 3); });   // nur echte Bruchteile
+      if (!o[0].w && !o[1].w) { const c = o.filter(x => x.n < x.d); if (!c.length) continue; pick(c).w = rnd(1, 3); }
     }
     if (S.neg) o.forEach(x => { if (Math.random() < .4) x.s = -1; });
     const P = imp(o[0]), Q = imp(o[1]), div = level === 4;
@@ -277,16 +272,6 @@ function show(kind, html) { $("fb").innerHTML = `<div class="feedback feedback--
 function renderChain() {
   $("chain").innerHTML = S.chain.map(r => `<div class="chain-row"><b aria-hidden="true">✔</b><span>${r.label}:</span><span class="chain-expr">${r.expr}</span></div>`).join("");
 }
-function targetResult(t) {
-  if (t.level === 1) {
-    const w = t.w || 0;
-    if (t.kind === "red") return {s: t.s, w, n: t.n0, d: t.d0};
-    return {s: t.s, w, n: t.n0 * t.f, d: t.d0 * t.f};
-  }
-  const cf = cancelForm({a: t.a, b: t.b, c: t.c, d: t.d});
-  const Rn = cf.a * cf.c, Rd = cf.b * cf.d, g = gcd(Rn, Rd), sp = t.ops[0].s * t.ops[1].s;
-  return {s: sp, n: Rn / g, d: Rd / g};
-}
 function renderStep(skipFocus) {
   $("stepBox").hidden = false;
   if (S.mental) {
@@ -339,8 +324,7 @@ function check() {
   const fs = [...$("stepIn").querySelectorAll(".fin")].map(readFin), e = fs.find(f => f.err);
   if (e) return show("hint", e.err);
   if (S.mental) {
-    const R = targetResult(S.task);
-    const r = finalCheck(fs[0], R);
+    const r = S.steps[S.steps.length - 1].check(fs);
     if (r.k === "ok") {
       S.chain.push({label: "Kopfrechnen", expr: fmt({s: fs[0].s, w: fs[0].w, n: fs[0].n, d: fs[0].d})});
       renderChain();
@@ -375,9 +359,9 @@ function finish() {
     if (S.run >= S.thr) {
       S.run = 0;
       const cf = S.fmode === "auto" && S.stage < AUTO.length - 1, cl = S.mode === "adaptive" && S.level < 4;
-      if (cf && (!cl || !S.flip)) { S.stage++; S.flip = true; msg = `Neue Faktoren freigeschaltet: ${AUTO[S.stage].join(", ")}.`; }
-      else if (cl) { S.level++; S.flip = false; msg = `Aufstieg: weiter mit Stufe ${S.level}.`; }
-      else if (S.mode === "adaptive" || S.fmode === "auto") msg = "Höchste Stufe und alle Faktoren erreicht – stark!";
+      if (cf && (!cl || !S.flip)) { S.stage++; S.flip = true; msg += `Neue Faktoren freigeschaltet: ${AUTO[S.stage].join(", ")}.`; }
+      else if (cl) { S.level++; S.flip = false; msg += `Aufstieg: weiter mit Stufe ${S.level}.`; }
+      else if (S.mode === "adaptive" || S.fmode === "auto") msg += "Höchste Stufe und alle Faktoren erreicht – stark!";
     }
   } else {
     S.streak = 0; S.run = 0; S.wrong++; pts = 3;
@@ -392,31 +376,15 @@ function finish() {
   $("next").hidden = false; $("next").focus();
   cfg();
 }
-function syncAutoPanel() {
-  const show = S.mode === "adaptive" && S.autoOpen;
-  const roots = [tb.shadowRoot, tb].filter(Boolean);
-  roots.forEach(r => {
-    r.querySelectorAll('input[type="range"],[class*="slider"],[class*="range"],[class*="info"],[class*="desc"],[class*="text"],[class*="progress"]').forEach(el => {
-      if (el.tagName === "INPUT" && el.type === "range") {
-        const box = el.closest("label,.row,.field,.slider-row,.tb-row,div") || el;
-        if (box !== r && box !== tb) box.style.display = show ? "" : "none";
-        el.style.display = show ? "" : "none";
-      } else if (!el.querySelector("button") && el.tagName !== "BUTTON") {
-        el.style.display = show ? "" : "none";
-      }
-    });
-  });
-}
 function stats() {
   $("sScore").textContent = S.score; $("sStreak").textContent = S.streak; $("sBest").textContent = `(${S.best})`; $("sRate").textContent = `${S.right}/${S.total}`;
   const auto = S.mode === "adaptive";
   tb.setProgress(auto ? S.run : 0, auto ? (`Fehlerfrei in Folge: ${S.run} von ${S.thr}.` + (S.fmode === "auto" && S.stage < AUTO.length - 1 ? ` Danach kommen neue Faktoren dazu (${AUTO[S.stage + 1].join(", ")}).` : "") + " Zwei Aufgaben mit Fehlern in Folge: ein Schritt zurück.") : "");
-  syncAutoPanel();
 }
 
 /* ---------- Einstellungen ---------- */
 function press(el, on) { el.setAttribute("aria-pressed", on); el.classList.toggle("is-active", on); }
-function cfg() {
+function renderCfg() {
   document.querySelectorAll("[data-fm]").forEach(b => press(b, b.dataset.fm === S.fmode));
   $("autoStatus").hidden = S.fmode !== "auto";
   $("autoStatus").textContent = `Auto-Faktoren aktiv: ${active().join(", ")}`;
@@ -434,13 +402,14 @@ function cfg() {
   ].map(([k, l]) => `<button type="button" class="chip${S[k] ? " is-active" : ""}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join("")
     + `<button type="button" class="chip${extOn ? " is-active" : ""}" aria-pressed="${extOn}" data-t="ext">Erweitern</button>`
     + `<button type="button" class="chip${S.help ? " is-active" : ""}" aria-pressed="${S.help}" data-t="help">Hilfe</button>`;
-  $("tg").querySelectorAll("button").forEach(b => b.classList.toggle("is-fade", b.scrollWidth > b.clientWidth + 1));
+  MathPortal.ui.fade($("tg"));
   $("lvls").innerHTML = LV.map((l, i) => `<button type="button" class="chip chip--left${S.level === i + 1 ? " is-active" : ""}" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`).join("");
   $("manualBox").hidden = S.mode !== "manual";
   $("help").hidden = !S.help;
   const mb = $("mentalBtn"); if (mb) { mb.classList.toggle("is-active", S.mental); mb.setAttribute("aria-pressed", S.mental); }
   stats();
 }
+function cfg() { MathPortal.ui.keepFocus(renderCfg); }
 $("helpList").innerHTML = [
   `<b>Kürzen:</b> Teile Zähler und Nenner durch dieselbe Zahl, bis es nicht mehr geht. Beispiel: ${frac(6, 8)} = ${frac(3, 4)} (geteilt durch 2).`,
   `<b>Erweitern:</b> Multipliziere Zähler und Nenner mit derselben Zahl. Beispiel: ${frac(2, 3)} mit 4 erweitert ergibt ${frac(8, 12)}.`,
@@ -450,14 +419,10 @@ $("helpList").innerHTML = [
   `<b>Vorzeichen:</b> Minus mal Plus ergibt Minus, Minus mal Minus ergibt Plus. Beim Dividieren bleibt das Vorzeichen beim Kehrwert erhalten.`
 ].map(x => `<li>${x}</li>`).join("");
 function setMode(m) {
-  if (m === "adaptive" && S.mode === "adaptive") { S.autoOpen = !S.autoOpen; syncAutoPanel(); return; }
-  const sx = window.scrollX, sy = window.scrollY;
-  S.mode = m; if (m !== "adaptive") S.autoOpen = false;
-  S.run = 0; S.wrong = 0; if (m === "adaptive") S.level = 1; cfg(); newTask(true);
-  const restore = () => window.scrollTo({left: sx, top: sy, behavior: "instant"});
-  restore();
-  requestAnimationFrame(() => { restore(); requestAnimationFrame(restore); });
-  setTimeout(restore, 0);
+  MathPortal.ui.keepScroll(() => {
+    S.mode = m;
+    S.run = 0; S.wrong = 0; if (m === "adaptive") S.level = 1; cfg(); newTask(true);
+  });
 }
 
 $("fmodes").addEventListener("click", e => { const b = e.target.closest("[data-fm]"); if (!b || b.dataset.fm === S.fmode) return;
@@ -478,19 +443,9 @@ $("tg").addEventListener("click", e => {
 });
 $("lvls").addEventListener("click", e => { const b = e.target.closest("[data-l]"); if (b) { S.level = +b.dataset.l; cfg(); newTask(); } });
 tb.addEventListener("modechange", e => setMode(e.detail.mode));
-tb.addEventListener("click", e => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
-  const txt = (btn.textContent || "").trim().toLowerCase();
-  if ((txt === "auto" || btn.dataset.mode === "adaptive") && S.mode === "adaptive") {
-    S.autoOpen = !S.autoOpen; syncAutoPanel();
-  }
-}, true);
 tb.addEventListener("thresholdchange", e => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); stats(); });
-new MutationObserver(() => syncAutoPanel()).observe(tb, {childList: true, subtree: true});
-if (tb.shadowRoot) new MutationObserver(() => syncAutoPanel()).observe(tb.shadowRoot, {childList: true, subtree: true});
 $("stepIn").addEventListener("click", e => { const b = e.target.closest(".fin-sign"); if (b) { const m = b.dataset.s === "+"; b.dataset.s = m ? "-" : "+"; b.textContent = m ? M : "+"; } });
-$("stepIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+$("stepIn").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT" && !e.repeat) { e.preventDefault(); check(); } });
 function toggleMental() {
   S.mental = !S.mental;
   const mb = $("mentalBtn"); mb.classList.toggle("is-active", S.mental); mb.setAttribute("aria-pressed", S.mental);
@@ -515,10 +470,10 @@ function resetScore() {
 $("mentalBtn").onclick = toggleMental;
 $("resetScore").onclick = resetScore;
 $("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = solution; $("next").onclick = newTask;
-document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && !e.repeat && S.done && !$("next").hidden && !MathPortal.ui.isControl(e.target)) newTask(); });
 
 S.thr = tb.threshold;
-window.addEventListener("resize", () => $("tg").querySelectorAll("button").forEach(b => b.classList.toggle("is-fade", b.scrollWidth > b.clientWidth + 1)));
+MathPortal.ui.watchFade($("tg"));
 cfg(); newTask();
 </script>
 </body>
