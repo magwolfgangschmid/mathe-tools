@@ -23,8 +23,8 @@
 .pyth-numrow { display: flex; gap: .5rem; align-items: stretch; }
 .pyth-numrow .input { flex: 1 1 0; width: 0; min-width: 0; text-align: left; padding-inline: .85rem; }
 .pyth-way { margin-top: .25rem; padding: .55rem .75rem; border-radius: var(--radius-sm); background: var(--card); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875rem; line-height: 1.45; }
-.pyth-grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
-@media (min-width: 640px) { .pyth-grid-6 { grid-template-columns: repeat(6, 1fr); } }
+.pyth-grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: .35rem; }
+@media (max-width: 479px) { .pyth-grid-6 { gap: .25rem; } .pyth-grid-6 .chip { padding: .5rem .2rem; font-size: .875rem; } }
 .pyth-grid-6 .chip { min-width: 0; width: 100%; padding-inline: .45rem; }
 .pyth-reset-wrap { text-align: center; }
 </style>
