@@ -77,7 +77,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',6],['B',10],['B',8],['B',7],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,impIn:false,subOnly:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -101,7 +101,13 @@ function densFor(L,k,t){
     const a=[D,pick(v)];while(a.length<k)a.push(pick(v.concat(D)));return a.sort(()=>Math.random()-.5);}
   return Array.from({length:k},genDen);
 }
-function numFor(d,L){
+function numFor(d,L,imp){
+  if(imp){
+    const all=[];for(let i=d+1;i<3*d;i++)if(i%d!==0)all.push(i);
+    const cop=all.filter(n=>gcd(n,d)===1),red=all.filter(n=>gcd(n,d)>1);
+    if(L<=2&&cop.length)return pick(cop);
+    return red.length&&Math.random()<.5?pick(red):pick(all);
+  }
   const all=Array.from({length:d-1},(_,i)=>i+1),cop=all.filter(n=>gcd(n,d)===1),red=all.filter(n=>gcd(n,d)>1);
   if(L<=2)return pick(cop);
   return red.length&&Math.random()<.5?pick(red):pick(all);
@@ -114,10 +120,24 @@ function make(want){
     if(!relax&&L===2&&(!chain||dens.every(d=>d===mx)))continue;
     if(!relax&&L===3&&(chain||Lc>(t<250?40:400)))continue;
     if(!relax&&L===4&&(chain||Lc<(t<250?42:0)||Lc>(t<300?400:5000)))continue;
-    const ts=dens.map(d=>({s:1,w:S.mix&&Math.random()<.6?rnd(1,4):0,n:numFor(d,L),d,v:''}));
-    if(S.mix&&!ts.some(x=>x.w))pick(ts).w=rnd(1,4);
-    ts.forEach((x,i)=>{if(Math.random()<.45&&(S.neg||i>0))x.s=-1;
-      if(S.neg&&i>0){if(x.s<0&&Math.random()<.5)x.v='p';else if(x.s>0&&Math.random()<.25)x.v='m';}});
+    const ts=dens.map(d=>{
+      const useMix=S.mix&&(!S.impIn||Math.random()<.5)&&Math.random()<.6;
+      const useImp=!useMix&&S.impIn&&Math.random()<.75;
+      return{s:1,w:useMix?rnd(1,4):0,n:numFor(d,L,useImp),d,v:''};
+    });
+    if(S.impIn&&!ts.some(x=>!x.w&&x.n>x.d)){const cand=ts.filter(x=>!x.w);const x=cand.length?pick(cand):pick(ts);x.w=0;x.n=numFor(x.d,L,true);}
+    if(S.mix&&!ts.some(x=>x.w)){const cand=S.impIn?ts.filter(x=>x.n<x.d):ts;const x=cand.length?pick(cand):pick(ts);x.w=rnd(1,4);if(x.n>x.d)x.n=numFor(x.d,L,false);}
+    ts.forEach((x,i)=>{
+      if(S.subOnly){
+        if(i===0){x.s=S.neg&&Math.random()<.35?-1:1;}
+        else if(S.neg&&Math.random()<.3){x.s=1;x.v='m';}
+        else{x.s=-1;}
+      }else{
+        if(Math.random()<.45&&(S.neg||i>0))x.s=-1;
+        if(S.neg&&i>0){if(x.s<0&&Math.random()<.5)x.v='p';else if(x.s>0&&Math.random()<.25)x.v='m';}
+      }
+    });
+    if(t>=250&&S.subOnly&&!S.neg&&k===3&&!S.mix&&!S.impIn){ts[0].n+=ts[0].d;}
     const N=ts.reduce((a,x)=>a+x.s*(x.w*x.d+x.n)*(Lc/x.d),0);
     if(N===0||(!S.neg&&N<0))continue;
     if(t<300&&(gcd(Math.abs(N),Lc)>1)!==want)continue;   // Quote kürzbar / nicht kürzbar
@@ -400,7 +420,7 @@ function cfg(){
   $('bl').querySelectorAll('button').forEach(b=>{b.disabled=auto;b.onclick=()=>{const d=+b.dataset.b;
     if(S.bl.has(d)){if(S.bl.size>1)S.bl.delete(d);}else S.bl.add(d);S.seen=[];cfg();if(!S.done)newQ();};});
   $('bnote').textContent=auto?'Auto-Modus: Die Bausteine werden nach und nach automatisch freigeschaltet.':'Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.';
-  const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['three','3 Summanden']];
+  const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['impIn','Unechte Brüche'],['subOnly','Nur Subtrahieren'],['three','3 Summanden']];
   $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' is-active':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
   $('tg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();});
   $('manualBox').classList.toggle('hidden',S.mode!=='manual');
