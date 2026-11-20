@@ -11,6 +11,11 @@
 
    Die Komponenten nutzen kein Shadow DOM, damit shared/style.css
    (Farbvariablen, .chip, .card …) direkt greift.
+
+   Cache (GitHub Pages): Versionsnummer anhängen und bei Änderungen erhöhen:
+   <script src="../../shared/components.js?v=2026-11-20"></script>
+
+   Hilfsfunktionen für die Apps: window.MathPortal.ui (siehe unten am Dateiende).
    ========================================================= */
 (function () {
   'use strict';
@@ -135,10 +140,12 @@
        show-tabs      Tab-Umschalter Üben / Regeln        (Standard: false)
        show-mode      Manuell/Adaptiv-Umschalter          (Standard: true)
        show-slider    Schwellenregler, nur im Modus adaptiv sichtbar (Standard: true)
+       collapsible-auto  Regler/Fortschritt im Modus adaptiv eingeklappt; ein Klick auf den
+                      bereits aktiven Adaptiv-/Auto-Knopf klappt sie auf und zu (Standard: false)
        tab            "practice" (Standard) oder "rules"
        mode           "manual" (Standard) oder "adaptive"
-       threshold      richtige Aufgaben in Folge bis zum Aufstieg (Standard: 5)
-       min, max       Bereich des Reglers (Standard: 3 bis 7)
+       threshold      richtige Aufgaben in Folge bis zum Aufstieg (Standard: 7, wenn nicht gesetzt)
+       min, max       Bereich des Reglers (Standard: 3 bis 10)
        label-practice, label-rules, label-manual, label-adaptive   eigene Beschriftungen
        slider-text    Text über dem Regler, {n} = Schwellenwert
                       (Standard: "Aufstieg nach {n} richtigen Aufgaben in Folge")
@@ -147,8 +154,9 @@
        tabchange        detail: { tab }
        modechange       detail: { mode }
        thresholdchange  detail: { value }
+       panelchange      detail: { open }   (nur bei collapsible-auto)
 
-     Eigenschaften: .tab  .mode  .threshold  (lesen und setzen)
+     Eigenschaften: .tab  .mode  .threshold  .panelOpen  (lesen und setzen)
      Methode:       .setProgress(run, infoText)  füllt den Fortschrittsbalken
                     (run richtige Aufgaben in Folge, bezogen auf .threshold)
      ========================================================= */
@@ -157,7 +165,7 @@
   class AppModeToolbar extends HTMLElement {
     static get observedAttributes() {
       return ['show-tabs', 'show-mode', 'show-slider', 'tab', 'mode', 'threshold', 'min', 'max',
-              'label-practice', 'label-rules', 'label-manual', 'label-adaptive', 'slider-text'];
+              'label-practice', 'label-rules', 'label-manual', 'label-adaptive', 'slider-text', 'collapsible-auto'];
     }
 
     get tab() { return this.getAttribute('tab') === 'rules' ? 'rules' : 'practice'; }
@@ -171,6 +179,9 @@
       return Math.min(this.max, Math.max(this.min, isNaN(v) ? 7 : v));
     }
     set threshold(v) { this.setAttribute('threshold', v); }
+    // Aufgeklappter Zustand des Regler-Panels (nur mit collapsible-auto relevant)
+    get panelOpen() { return !!this._open; }
+    set panelOpen(v) { this._open = !!v; if (this._ready) this._render(); }
 
     connectedCallback() {
       if (!this._ready) {
@@ -203,7 +214,14 @@
         });
         r.modeBox.addEventListener('click', (e) => {
           const b = e.target.closest('[data-mode]');
-          if (!b || b.dataset.mode === this.mode) return;
+          if (!b) return;
+          if (b.dataset.mode === this.mode) {            // aktiven Adaptiv-/Auto-Knopf erneut: Panel auf/zu
+            if (this.mode === 'adaptive' && flag(this, 'collapsible-auto', false)) {
+              this.panelOpen = !this.panelOpen;
+              this._emit('panelchange', { open: this.panelOpen });
+            }
+            return;
+          }
           this.mode = b.dataset.mode;
           this._emit('modechange', { mode: this.mode });
         });
@@ -216,7 +234,10 @@
       this._render();
     }
 
-    attributeChangedCallback() { if (this._ready) this._render(); }
+    attributeChangedCallback(name) {
+      if (name === 'mode') this._open = false;           // Moduswechsel klappt das Panel ein
+      if (this._ready) this._render();
+    }
 
     setProgress(run, info) {
       this._run = run;
@@ -234,7 +255,8 @@
       const r = this._r;
       const showTabs = flag(this, 'show-tabs', false);
       const showMode = flag(this, 'show-mode', true);
-      const sliderOn = flag(this, 'show-slider', true) && this.mode === 'adaptive';
+      const collapsible = flag(this, 'collapsible-auto', false) && this.mode === 'adaptive';
+      const sliderOn = flag(this, 'show-slider', true) && this.mode === 'adaptive' && (!collapsible || !!this._open);
 
       r.tabs.classList.toggle('hidden', !showTabs);
       r.modeBox.classList.toggle('hidden', !showMode);
@@ -256,6 +278,8 @@
         b.classList.toggle('is-active', on);
         b.setAttribute('aria-pressed', String(on));
       });
+      if (collapsible) r.mAdaptive.setAttribute('aria-expanded', String(!!this._open));
+      else r.mAdaptive.removeAttribute('aria-expanded');
 
       r.range.min = this.min;
       r.range.max = this.max;
@@ -273,8 +297,50 @@
   if (!customElements.get('app-header')) customElements.define('app-header', AppHeader);
   if (!customElements.get('app-mode-toolbar')) customElements.define('app-mode-toolbar', AppModeToolbar);
 
-  // Kleine API für eigene Skripte: MathPortal.theme.get() / .set('dark') / .toggle()
+  /* ---------- Hilfsfunktionen für die Apps: MathPortal.ui ---------- */
+  const ui = {
+    // Beschriftung zu lang für den Knopf → Klasse .is-fade (Ausblenden am Rand, siehe style.css)
+    fade(root) {
+      root.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-fade', b.scrollWidth > b.clientWidth + 1); });
+    },
+    // fade() erneut bei Größenänderung und nach dem Laden der Schrift (Breiten ändern sich)
+    watchFade(root) {
+      const f = function () { ui.fade(root); };
+      addEventListener('resize', f);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(f);
+      return f;
+    },
+    // Scrollposition über eine Neuzeichnung hinweg halten (Moduswechsel)
+    keepScroll(fn) {
+      const sx = window.scrollX, sy = window.scrollY;
+      fn();
+      const back = function () { window.scrollTo({ left: sx, top: sy, behavior: 'instant' }); };
+      back();
+      requestAnimationFrame(function () { back(); requestAnimationFrame(back); });
+      setTimeout(back, 0);
+    },
+    // Fokus auf dem Knopf (data-Attribut + Elternelement mit id) nach dem Neuaufbau wiederherstellen
+    keepFocus(fn) {
+      const a = document.activeElement;
+      let host = null, sel = null;
+      if (a && a !== document.body && a.attributes) {
+        const at = Array.prototype.find.call(a.attributes, function (x) { return /^data-/.test(x.name) && x.name !== 'data-ref'; });
+        const h = a.parentElement && a.parentElement.closest('[id]');
+        if (at && h) { host = h.id; sel = '[' + at.name + '="' + at.value.replace(/"/g, '\\"') + '"]'; }
+      }
+      fn();
+      if (sel) {
+        const el = document.querySelector('#' + host + ' ' + sel);
+        if (el && el !== document.activeElement && !el.disabled) el.focus({ preventScroll: true });
+      }
+    },
+    // Enter soll fokussierte Bedienelemente selbst auslösen (nicht global abfangen)
+    isControl(t) { return !!(t && t.closest && t.closest('button,a,summary,select,textarea,[role="tab"]')); }
+  };
+
+  // Kleine API für eigene Skripte: MathPortal.theme.get() / .set('dark') / .toggle(), MathPortal.ui.*
   window.MathPortal = {
+    ui: ui,
     theme: {
       get: currentTheme,
       set: setTheme,
