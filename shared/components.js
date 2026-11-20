@@ -24,17 +24,31 @@
   const KEY = 'theme';                       // gleicher Schlüssel wie in den bisherigen Apps
   const root = document.documentElement;
 
+  const THEMES = ['light', 'dark', 'sunset'];
+  function normalizeTheme(t) { return THEMES.includes(t) ? t : 'light'; }
   function stored() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
-  function currentTheme() { return root.classList.contains('dark') ? 'dark' : 'light'; }
+  function currentTheme() {
+    if (root.classList.contains('sunset')) return 'sunset';
+    if (root.classList.contains('dark')) return 'dark';
+    return 'light';
+  }
+  function nextTheme(t) {
+    const idx = THEMES.indexOf(normalizeTheme(t));
+    return THEMES[(idx + 1) % THEMES.length];
+  }
 
   function apply(theme) {
-    root.classList.toggle('dark', theme === 'dark');
-    root.style.colorScheme = theme;
-    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+    const t = normalizeTheme(theme);
+    root.classList.toggle('dark', t === 'dark');
+    root.classList.toggle('sunset', t === 'sunset');
+    root.dataset.theme = t;
+    root.style.colorScheme = t === 'light' ? 'light' : 'dark';
+    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: t } }));
   }
   function setTheme(theme) {
-    try { localStorage.setItem(KEY, theme); } catch (e) {}
-    apply(theme);
+    const t = normalizeTheme(theme);
+    try { localStorage.setItem(KEY, t); } catch (e) {}
+    apply(t);
   }
 
   // Beim Laden: gespeicherte Wahl, sonst Systemeinstellung
@@ -54,7 +68,8 @@
   const ICON = {
     back: '<path d="M15 6l-6 6 6 6"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    sunset: '<path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 9v2"/><path d="m4.2 10.2 1.4 1.4"/><path d="M18.4 11.6l1.4-1.4"/><path d="M2 18h20"/><path d="M7 22h10"/>'
   };
   function refs(el) {
     const r = {};
@@ -94,7 +109,7 @@
         this._r.back.addEventListener('click', (e) => {
           if (this.getAttribute('back-url') === 'history') { e.preventDefault(); history.back(); }
         });
-        this._r.theme.addEventListener('click', () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark'));
+        this._r.theme.addEventListener('click', () => setTheme(nextTheme(currentTheme())));
         this._ready = true;
       }
       this._onTheme = () => this._renderTheme();
@@ -127,10 +142,18 @@
     }
 
     _renderTheme() {
-      const dark = currentTheme() === 'dark';
+      const t = currentTheme();
       const b = this._r.theme;
-      b.innerHTML = svg(dark ? ICON.sun : ICON.moon);            // Sonne = zu Hell wechseln
-      b.setAttribute('aria-label', dark ? 'Zum hellen Design wechseln' : 'Zum dunklen Design wechseln');
+      if (t === 'light') {
+        b.innerHTML = svg(ICON.moon);
+        b.setAttribute('aria-label', 'Zum dunklen Design wechseln (aktuell: Tag)');
+      } else if (t === 'dark') {
+        b.innerHTML = svg(ICON.sunset);
+        b.setAttribute('aria-label', 'Zum Sunset-Design wechseln (aktuell: Nacht)');
+      } else {
+        b.innerHTML = svg(ICON.sun);
+        b.setAttribute('aria-label', 'Zum hellen Design wechseln (aktuell: Sunset)');
+      }
     }
   }
 
@@ -344,7 +367,8 @@
     theme: {
       get: currentTheme,
       set: setTheme,
-      toggle: function () { setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); }
+      next: nextTheme,
+      toggle: function () { setTheme(nextTheme(currentTheme())); }
     }
   };
 })();
