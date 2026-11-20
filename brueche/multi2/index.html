@@ -10,6 +10,11 @@
 <!-- Zentrales Design und Komponenten (GitHub Pages, Unterordner) -->
 <link rel="stylesheet" href="../../shared/style.css">
 <script src="../../shared/components.js"></script>
+<style>
+#tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
+#tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
+#tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
+</style>
 </head>
 <body>
 
@@ -85,7 +90,7 @@ const CATS = [
 // Auto-Modus: schrittweise Freischaltung
 const AUTO = [[2, 3], [4, 5, 10], [6, 7, 8, 9, 12], [14, 15, 16, 18, 20], [11, 13, 19, 21, 25]];
 const LV = ["Kürzen & Erweitern", "Multiplikation I", "Multiplikation II", "Dividieren"];
-const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, mode: "manual", level: 1, thr: tb.threshold,
+const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, extMode: "force", mode: "manual", level: 1, thr: tb.threshold,
   score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0, task: null, steps: [], step: 0, errs: 0, done: false, chain: []};
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -127,7 +132,10 @@ function build(level, pool) {
       const n0 = nf(pool, 1, 40), d0 = nf(pool, 2, 40);
       if (!n0 || !d0 || gcd(n0, d0) !== 1 || (n0 >= d0 && Math.random() < .8)) continue;
       const k = pick(pool); if (n0 * k > 300 || d0 * k > 300) continue;
-      return Math.random() < .5 ? {level, kind: "red", s: sg, n0, d0, n: n0 * k, d: d0 * k} : {level, kind: "ext", s: sg, n0, d0, f: k};
+      const kind = S.extMode === "force" ? "ext" : "red";
+      return kind === "red"
+        ? {level, kind: "red", s: sg, n0, d0, n: n0 * k, d: d0 * k}
+        : {level, kind: "ext", s: sg, n0, d0, f: k};
     }
     const o = [operand(pool, level >= 3), operand(pool, level >= 3)];
     if (!o[0] || !o[1]) continue;
@@ -349,7 +357,14 @@ function cfg() {
     return `<div class="cat"><button type="button" class="chip chip--left chip--cat${c.pro ? " chip--pro" : ""}" data-c="${c.id}" aria-expanded="${open}">${c.name} · ${n} von ${c.nums.length} aktiv ${open ? "▴" : "▾"}</button>` +
       (open ? `<div class="row cat-nums">${c.nums.map(x => `<button type="button" class="chip${c.pro ? " chip--pro" : ""}${S.pool.has(x) ? " is-active" : ""}" aria-pressed="${S.pool.has(x)}" data-f="${x}">${x}</button>`).join("")}</div>` : "") + `</div>`;
   }).join("");
-  $("tg").innerHTML = [["neg", "Negative Vorzeichen"], ["mix", "Gemischte Zahlen"], ["help", "Hilfe"]].map(([k, l]) => `<button type="button" class="chip${S[k] ? " is-active" : ""}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join("");
+  const extOn = S.extMode === "force";
+  $("tg").innerHTML = [
+    ["neg", "Negative Vorzeichen"],
+    ["mix", "Gemischte Zahlen"],
+    ["help", "Hilfe"]
+  ].map(([k, l]) => `<button type="button" class="chip${S[k] ? " is-active" : ""}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join("")
+    + `<button type="button" class="chip${extOn ? " is-active" : ""}" aria-pressed="${extOn}" data-t="ext">Erweitern</button>`;
+  $("tg").querySelectorAll("button").forEach(b => b.classList.toggle("is-fade", b.scrollWidth > b.clientWidth + 1));
   $("lvls").innerHTML = LV.map((l, i) => `<button type="button" class="chip chip--left${S.level === i + 1 ? " is-active" : ""}" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`).join("");
   $("manualBox").hidden = S.mode !== "manual";
   $("help").hidden = !S.help;
@@ -375,7 +390,12 @@ $("catBox").addEventListener("click", e => {
   const n = +f.dataset.f;
   if (S.pool.has(n)) { if (S.pool.size === 1) { show("hint", "Mindestens eine Zahl muss aktiv bleiben."); return; } S.pool.delete(n); } else S.pool.add(n);
   cfg(); if (!S.done) newTask(); });
-$("tg").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; const k = b.dataset.t; S[k] = !S[k]; cfg(); if (k !== "help" && !S.done) newTask(); });
+$("tg").addEventListener("click", e => {
+  const b = e.target.closest("[data-t]"); if (!b) return;
+  const k = b.dataset.t;
+  if (k === "ext") { S.extMode = S.extMode === "force" ? "auto" : "force"; cfg(); if (!S.done) newTask(); return; }
+  S[k] = !S[k]; cfg(); if (k !== "help" && !S.done) newTask();
+});
 $("lvls").addEventListener("click", e => { const b = e.target.closest("[data-l]"); if (b) { S.level = +b.dataset.l; cfg(); newTask(); } });
 tb.addEventListener("modechange", e => setMode(e.detail.mode));
 tb.addEventListener("thresholdchange", e => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); stats(); });
@@ -385,6 +405,7 @@ $("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = 
 document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
 
 S.thr = tb.threshold;
+window.addEventListener("resize", () => $("tg").querySelectorAll("button").forEach(b => b.classList.toggle("is-fade", b.scrollWidth > b.clientWidth + 1)));
 cfg(); newTask();
 </script>
 </body>
