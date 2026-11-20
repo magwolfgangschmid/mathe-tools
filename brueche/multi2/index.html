@@ -55,7 +55,7 @@
     <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
     <div class="card stat"><div class="mute xs">Fehlerfrei</div><div id="sRate" class="stat-value">0/0</div></div>
   </section>
-  <div class="score-actions"><button id="mentalBtn" type="button" class="btn btn-ghost small" aria-pressed="false">Kopfrechnen</button></div>
+  <div class="score-actions"><button id="mentalBtn" type="button" class="btn btn-ghost small" aria-pressed="false">Kopfrechnen</button><button id="resetScore" type="button" class="btn btn-ghost small">Punkte zurücksetzen</button></div>
 
   <section class="card pad pad-lg stack" aria-label="Aufgabe">
     <div id="qMeta" class="mute small"></div>
@@ -491,7 +491,12 @@ function toggleMental() {
     }
   }
 }
+function resetScore() {
+  S.score = 0; S.streak = 0; S.best = 0; S.right = 0; S.total = 0; S.run = 0; S.wrong = 0;
+  stats();
+}
 $("mentalBtn").onclick = toggleMental;
+$("resetScore").onclick = resetScore;
 $("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = solution; $("next").onclick = newTask;
 document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
 
