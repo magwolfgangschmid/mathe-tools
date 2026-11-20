@@ -192,7 +192,7 @@ function adv(rev){const q=S.q;addChain(q.st,rev);
   if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'){
     q.se=0;q.awaitImpChoice=true;
     $('hint').textContent='';
-    $('gt').textContent=`Schritt ${q.st+1} erledigt – möchtest du das Ergebnis in einen unechten Bruch verwandeln?`;
+    $('gt').textContent=`Schritt ${q.st+1} erledigt – möchtest du die gemischte Zahl in einen unechten Bruch verwandeln?`;
     $('gb').innerHTML='<button class="btn btn-primary" id="wimp">In unechten Bruch verwandeln</button><button class="btn btn-ghost" id="wskip">Fertig ohne Umwandeln</button>';
     $('wimp').onclick=()=>{q.awaitImpChoice=false;q.seq.splice(q.st+1,0,'to_imp');q.st++;guide();};
     $('wskip').onclick=()=>{q.awaitImpChoice=false;q.st++;guide();};
