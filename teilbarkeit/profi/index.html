@@ -2,299 +2,547 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Teilbarkeit &amp; Teilbarkeitsregeln</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={darkMode:'class'}</script>
-<script>try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}</script>
+
+<!-- Zentrales Design (GitHub Pages, Unterordner) -->
+<link rel="stylesheet" href="../../shared/style.css?v=2026-11-20">
+<script src="../../shared/components.js?v=2026-11-20"></script>
 <style>
-:root{--pro:#d5dae3;--bg:#f6f5ee;--grid:#d3dcec;--card:#fff;--ink:#1b2a4a;--mute:#5a6785;--acc:#2447c5;--accfg:#fff;--ok:#17803d;--okbg:#dcf5e3;--bad:#b42318;--badbg:#fde4e1;--line:#c9d2e3}
-.dark{--pro:#3a4a52;--bg:#1d2a26;--grid:#2b3c37;--card:#26352f;--ink:#f1efe4;--mute:#a9b8b0;--acc:#f2c94c;--accfg:#1d2a26;--ok:#7be0a0;--okbg:#1f4a35;--bad:#ff9d8f;--badbg:#5a2a26;--line:#41554d}
-body{font-family:Lexend,system-ui,sans-serif;color:var(--ink);background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
-.card{background:var(--card);border:1.5px solid var(--line);border-radius:14px}
-.mute{color:var(--mute)}
-.chip{border:1.5px solid var(--line);border-radius:10px;font-weight:600;min-width:2.9rem;padding:.55rem .7rem;transition:background .15s}
-.chip.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
-.btn{border:1.5px solid var(--line);border-radius:10px;padding:.8rem 1rem;font-weight:600;text-align:left;background:var(--card)}
-.btn:hover:not(:disabled){border-color:var(--acc)}
-.btn.ok{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
-.btn.bad{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
-.chip.pro{background:var(--pro)}.chip.pro.on{background:#475569;color:#fff;border-color:var(--acc)}.badge{font-size:.65rem;font-weight:600;background:var(--pro);padding:1px 7px;border-radius:99px;margin-left:.4rem}.chip .badge{display:block;margin:0;padding:0;background:none;opacity:.8;line-height:1}
-.primary{background:var(--acc);color:var(--accfg);border-radius:10px;padding:.75rem 1.4rem;font-weight:600}
-.big{font-weight:800;letter-spacing:.04em;font-variant-numeric:tabular-nums}
-button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-input[type=range]{accent-color:var(--acc);width:100%}
+.teilb-reset-wrap { text-align: center; }
 </style>
 </head>
-<body class="min-h-screen">
-<div class="max-w-2xl mx-auto p-3 sm:p-6 space-y-3">
+<body>
+<app-header title="Teilbarkeit" subtitle="Teilbarkeitsregeln üben" back-url="../../"></app-header>
 
-<header class="flex items-center justify-between gap-3">
-  <div>
-    <h1 class="text-xl sm:text-2xl font-extrabold">Teilbarkeit</h1>
-    <p class="mute text-sm">Teilbarkeitsregeln üben</p>
-  </div>
-  <button id="theme" class="card px-3 py-2 text-lg font-semibold" aria-label="Hell/Dunkel umschalten"></button>
-</header>
-<nav class="grid grid-cols-2 gap-2"><button id="t1" class="chip">Übung &amp; Training</button><button id="t2" class="chip">Regeln &amp; Herleitungen</button></nav>
-<div id="tab1" class="space-y-3">
+<main class="app">
 
-<section class="card p-4 space-y-4">
-  <div>
-    <h2 class="font-semibold mb-2">Teiler</h2>
-    <div id="divs" class="flex flex-wrap gap-2"></div>
-    <p id="divHint" class="mute text-xs mt-2"></p>
-  </div>
-  <div>
-    <h2 class="font-semibold mb-2">Modus</h2>
-    <div class="flex gap-2">
-      <button id="mManual" class="chip flex-1"></button>
-      <button id="mAdapt" class="chip flex-1"></button>
+<app-mode-toolbar id="tb" show-tabs="true" show-mode="true" show-slider="true" mode="adaptive" threshold="5" min="2" max="8" label-practice="Übung &amp; Training" label-rules="Regeln &amp; Herleitungen" label-manual="Manuell" label-adaptive="Auto" collapsible-auto></app-mode-toolbar>
+
+<div id="tab1" class="stack">
+  <section class="card pad stack">
+    <div>
+      <h2>Teiler</h2>
+      <div id="divs" class="row"></div>
+      <p id="divHint" class="mute xs note" hidden></p>
     </div>
-  </div>
-  <div id="manualBox">
-    <h2 class="font-semibold mb-2">Aufgabentyp</h2>
-    <div id="lvls" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
-  </div>
-  <div id="adaptBox" class="hidden space-y-2">
-    <label for="thr" class="font-semibold block">Aufstieg nach <span id="thrV">5</span> richtigen Aufgaben in Folge</label>
-    <input id="thr" type="range" min="3" max="7" step="1" value="5">
-    <div class="h-2 rounded-full overflow-hidden" style="background:var(--line)"><div id="bar" class="h-full" style="background:var(--acc);width:0"></div></div>
-    <p id="adaptInfo" class="mute text-sm"></p>
-  </div>
-</section>
+    <div id="manualBox" hidden>
+      <h2>Aufgabentyp</h2>
+      <div id="lvls" class="grid-levels"></div>
+    </div>
+  </section>
 
-<section class="grid grid-cols-3 gap-2 text-center">
-  <div class="card p-2"><div class="mute text-xs">Punkte</div><div id="sScore" class="text-xl font-extrabold">0</div></div>
-  <div class="card p-2"><div class="mute text-xs">Serie (Bestwert)</div><div class="text-xl font-extrabold"><span id="sStreak">0</span> <span id="sBest" class="mute text-sm font-semibold">(0)</span></div></div>
-  <div class="card p-2"><div class="mute text-xs">Richtig</div><div id="sRate" class="text-xl font-extrabold">0/0</div></div>
-</section>
+  <section class="card pad pad-lg stack" aria-label="Aufgabe">
+    <div class="row row--between">
+      <span id="qMeta" class="pill"></span>
+      <span id="qNote" class="pill" hidden></span>
+    </div>
+    <p id="qText" class="q-text"></p>
+    <div id="qBig" class="big"></div>
+    <div id="opts" class="options"></div>
+    <div id="fb" class="fb-slot" aria-live="polite"></div>
+    <button id="next" class="btn btn-primary btn-block" type="button" hidden>Weiter</button>
+  </section>
 
-<section class="card p-4 sm:p-6 space-y-4" aria-live="polite">
-  <div id="qMeta" class="mute text-sm"></div>
-  <p id="qText" class="font-semibold text-lg"></p>
-  <div id="qBig" class="big text-5xl sm:text-6xl text-center py-2"></div>
-  <div id="opts" class="grid gap-2"></div>
-  <div id="fb" class="hidden rounded-xl p-4 space-y-2"></div>
-  <button id="next" class="primary hidden w-full sm:w-auto">Nächste Aufgabe</button>
-</section>
+  <section class="card pad stack" aria-label="Fortschritt">
+    <h2>Dein Fortschritt</h2>
+    <div class="stats">
+      <div class="stat"><div id="sRate" class="stat-value">0/0</div><div class="mute small">richtig</div></div>
+      <div class="stat"><div id="sStreak" class="stat-value">0</div><div class="mute small">Serie (Bestwert <span id="sBest">0</span>)</div></div>
+      <div class="stat"><div id="sScore" class="stat-value">0</div><div class="mute small">Punkte (Stufe <span id="sLevel">1</span>)</div></div>
+    </div>
+    <div class="teilb-reset-wrap">
+      <button id="reset" class="btn btn-ghost small" type="button">Zähler zurücksetzen</button>
+    </div>
+  </section>
 
-<footer class="mute text-xs text-center pb-4">Tipp: Mit den Tasten 1–4 antworten, mit Enter weiter. Profi-Teiler (grau) schaltest du oben dazu.</footer>
+  <footer class="foot mute xs">Tipp: Mit den Tasten 1–4 antworten, mit Enter weiter. Profi-Teiler (grau) schaltest du oben dazu.</footer>
 </div>
-<div id="tab2" class="hidden space-y-3"></div>
-</div>
+
+<div id="tab2" class="stack-md" hidden></div>
+
+</main>
 
 <script>
-const ALL=[2,3,4,5,6,7,8,9,10,12,15],PRO=[11,13,17,19];
-const LV=['Teilbarkeit prüfen','Zwei Teiler prüfen','Rest-, Summen- & Produktregel'];
-const S={active:new Set([2,3,5,9,10]),mode:'manual',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,run:0,wrong:0,q:null,done:false,note:''};
-const $=id=>document.getElementById(id);
-const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-const pick=a=>a[rnd(0,a.length-1)];
-const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
-const gcd=(a,b)=>b?gcd(b,a%b):a, lcm=(a,b)=>a/gcd(a,b)*b;
-const qs=n=>String(n).split('').reduce((s,c)=>s+ +c,0);
-const mult=(d,lo,hi)=>d*rnd(Math.ceil(lo/d),Math.floor(hi/d));
+const ALL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15], PRO = [11, 13, 17, 19];
+const LV = ['Teilbarkeit prüfen', 'Zwei Teiler prüfen', 'Rest-, Summen- & Produktregel'];
+const PRAISE = ['Super, genau richtig!', 'Stark gemacht!', 'Perfekt!', 'Top, weiter so!', 'Richtig – das sitzt!'];
+const OOPS = ['Nicht ganz – schau noch einmal genau hin.', 'Knapp daneben, das schaffst du!', 'Noch nicht richtig, aber gleich hast du es.'];
+
+const $ = id => document.getElementById(id);
+const tb = $('tb');
+const S = {
+  active: new Set([2, 3, 5, 9, 10]),
+  mode: 'adaptive',
+  level: 1,
+  thr: tb.threshold,
+  score: 0,
+  streak: 0,
+  best: 0,
+  right: 0,
+  total: 0,
+  run: 0,
+  wrong: 0,
+  q: null,
+  done: false
+};
+
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[rnd(0, a.length - 1)];
+const shuf = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const lcm = (a, b) => a / gcd(a, b) * b;
+const qs = n => String(n).split('').reduce((s, c) => s + +c, 0);
+const mult = (d, lo, hi) => d * rnd(Math.ceil(lo / d), Math.floor(hi / d));
+
+function keepScroll(fn) {
+  if (window.MathPortal && MathPortal.ui && MathPortal.ui.keepScroll) MathPortal.ui.keepScroll(fn);
+  else fn();
+}
+
+function keepFocus(fn) {
+  if (window.MathPortal && MathPortal.ui && MathPortal.ui.keepFocus) MathPortal.ui.keepFocus(fn);
+  else fn();
+}
 
 /* ---------- Begründungen ---------- */
-function explain(d,n){
-  const s=String(n),e=s.slice(-1),ok=n%d===0,no=ok?'':'nicht ';
-  const L=k=>+s.slice(-k);
-  switch(d){
-    case 2:return `Endziffer ${e} ist ${ok?'gerade':'ungerade'} → ${n} ist ${no}durch 2 teilbar.`;
-    case 3:case 9:return `Quersumme: ${s.split('').join('+')} = ${qs(n)}. ${qs(n)} ist ${qs(n)%d?'nicht ':''}durch ${d} teilbar → ${n} ist ${no}durch ${d} teilbar.`;
-    case 4:return `Letzte zwei Ziffern: ${L(2)}. ${L(2)} ist ${L(2)%4?'nicht ':''}durch 4 teilbar → ${n} ist ${no}durch 4 teilbar.`;
-    case 8:return `Letzte drei Ziffern: ${L(3)}. ${L(3)} ist ${L(3)%8?'nicht ':''}durch 8 teilbar → ${n} ist ${no}durch 8 teilbar.`;
-    case 5:return `Endziffer ${e} ist ${ok?'0 oder 5':'weder 0 noch 5'} → ${n} ist ${no}durch 5 teilbar.`;
-    case 10:return `Endziffer ${e} ist ${ok?'0':'nicht 0'} → ${n} ist ${no}durch 10 teilbar.`;
-    case 6:return `6 = 2·3, also müssen beide Regeln gelten. Durch 2: ${n%2?'nein':'ja'} (Endziffer ${e}). Durch 3: ${n%3?'nein':'ja'} (Quersumme ${qs(n)}). → ${n} ist ${no}durch 6 teilbar.`;
-    case 12:return `12 = 3·4, also müssen beide Regeln gelten. Durch 3: ${n%3?'nein':'ja'} (Quersumme ${qs(n)}). Durch 4: ${n%4?'nein':'ja'} (letzte zwei Ziffern ${L(2)}). → ${n} ist ${no}durch 12 teilbar.`;
-    case 15:return `15 = 3·5, also müssen beide Regeln gelten. Durch 3: ${n%3?'nein':'ja'} (Quersumme ${qs(n)}). Durch 5: ${n%5?'nein':'ja'} (Endziffer ${e}). → ${n} ist ${no}durch 15 teilbar.`;
-    case 11:{const z=s.split('').reverse().map((c,i)=>(i%2?-1:1)*c),w=z.reduce((a,b)=>a+b,0);return `Wechselsumme von rechts: ${z.map((v,i)=>i?(v<0?'− '+(-v):'+ '+v):v).join(' ')} = ${w}. ${w} ist ${w%11?'nicht ':''}durch 11 teilbar → ${n} ist ${no}durch 11 teilbar.`;}
-    case 13:case 17:case 19:{const k={13:4,17:-5,19:2}[d],r=Math.floor(n/10),z=n%10,v=r+k*z;return `${d}er-Trick: ${r} ${k<0?'−':'+'} ${Math.abs(k)}·${z} = ${v}. ${v} ist ${v%d?'nicht ':''}durch ${d} teilbar → ${n} ist ${no}durch ${d} teilbar. (Bei großen Ergebnissen den Trick wiederholen.)`;}
-    case 7:{const r=Math.floor(n/10),z=n%10,df=r-2*z;return `7er-Trick: Letzte Ziffer verdoppeln und vom Rest abziehen: ${r} − 2·${z} = ${df}. ${df} ist ${df%7?'nicht ':''}durch 7 teilbar → ${n} ist ${no}durch 7 teilbar.`;}
+function explain(d, n) {
+  const s = String(n), e = s.slice(-1), ok = n % d === 0, no = ok ? '' : 'nicht ';
+  const L = k => +s.slice(-k);
+  switch (d) {
+    case 2: return `Endziffer ${e} ist ${ok ? 'gerade' : 'ungerade'} → ${n} ist ${no}durch 2 teilbar.`;
+    case 3: case 9: return `Quersumme: ${s.split('').join('+')} = ${qs(n)}. ${qs(n)} ist ${qs(n) % d ? 'nicht ' : ''}durch ${d} teilbar → ${n} ist ${no}durch ${d} teilbar.`;
+    case 4: return `Letzte zwei Ziffern: ${L(2)}. ${L(2)} ist ${L(2) % 4 ? 'nicht ' : ''}durch 4 teilbar → ${n} ist ${no}durch 4 teilbar.`;
+    case 8: return `Letzte drei Ziffern: ${L(3)}. ${L(3)} ist ${L(3) % 8 ? 'nicht ' : ''}durch 8 teilbar → ${n} ist ${no}durch 8 teilbar.`;
+    case 5: return `Endziffer ${e} ist ${ok ? '0 oder 5' : 'weder 0 noch 5'} → ${n} ist ${no}durch 5 teilbar.`;
+    case 10: return `Endziffer ${e} ist ${ok ? '0' : 'nicht 0'} → ${n} ist ${no}durch 10 teilbar.`;
+    case 6: return `6 = 2·3, also müssen beide Regeln gelten. Durch 2: ${n % 2 ? 'nein' : 'ja'} (Endziffer ${e}). Durch 3: ${n % 3 ? 'nein' : 'ja'} (Quersumme ${qs(n)}). → ${n} ist ${no}durch 6 teilbar.`;
+    case 12: return `12 = 3·4, also müssen beide Regeln gelten. Durch 3: ${n % 3 ? 'nein' : 'ja'} (Quersumme ${qs(n)}). Durch 4: ${n % 4 ? 'nein' : 'ja'} (letzte zwei Ziffern ${L(2)}). → ${n} ist ${no}durch 12 teilbar.`;
+    case 15: return `15 = 3·5, also müssen beide Regeln gelten. Durch 3: ${n % 3 ? 'nein' : 'ja'} (Quersumme ${qs(n)}). Durch 5: ${n % 5 ? 'nein' : 'ja'} (Endziffer ${e}). → ${n} ist ${no}durch 15 teilbar.`;
+    case 11: {
+      const z = s.split('').reverse().map((c, i) => (i % 2 ? -1 : 1) * c), w = z.reduce((a, b) => a + b, 0);
+      return `Wechselsumme von rechts: ${z.map((v, i) => i ? (v < 0 ? '− ' + (-v) : '+ ' + v) : v).join(' ')} = ${w}. ${w} ist ${w % 11 ? 'nicht ' : ''}durch 11 teilbar → ${n} ist ${no}durch 11 teilbar.`;
+    }
+    case 13: case 17: case 19: {
+      const k = { 13: 4, 17: -5, 19: 2 }[d], r = Math.floor(n / 10), z = n % 10, v = r + k * z;
+      return `${d}er-Trick: ${r} ${k < 0 ? '−' : '+'} ${Math.abs(k)}·${z} = ${v}. ${v} ist ${v % d ? 'nicht ' : ''}durch ${d} teilbar → ${n} ist ${no}durch ${d} teilbar. (Bei großen Ergebnissen den Trick wiederholen.)`;
+    }
+    case 7: {
+      const r = Math.floor(n / 10), z = n % 10, df = r - 2 * z;
+      return `7er-Trick: Letzte Ziffer verdoppeln und vom Rest abziehen: ${r} − 2·${z} = ${df}. ${df} ist ${df % 7 ? 'nicht ' : ''}durch 7 teilbar → ${n} ist ${no}durch 7 teilbar.`;
+    }
   }
 }
 
 /* ---------- Aufgaben ---------- */
-function genL1(){
-  const d=pick([...S.active]);
-  let n=mult(d,20,9999); if(Math.random()<.5)n+=rnd(1,d-1);
-  return{text:`Ist diese Zahl durch ${d} teilbar?`,big:n,opts:['Ja','Nein'],c:n%d?1:0,ex:explain(d,n)};
+function genL1() {
+  const d = pick([...S.active]);
+  let n = mult(d, 20, 9999);
+  if (Math.random() < .5) n += rnd(1, d - 1);
+  return { text: `Ist diese Zahl durch <b>${d}</b> teilbar?`, big: n, opts: ['Ja', 'Nein'], c: n % d ? 1 : 0, ex: explain(d, n) };
 }
-function genL2(){
-  let a,b,note='';
-  if(S.active.size>=2)[a,b]=shuf([...S.active]).slice(0,2);
-  else{a=[...S.active][0];b=pick(ALL.filter(x=>x!==a));note=`Für Stufe 2 braucht es zwei Teiler: ${b} wurde ergänzt.`;}
-  const base=[a,b,lcm(a,b),0][rnd(0,3)];
-  let n=base?mult(base,20,9999):rnd(20,9999); if(Math.random()<.3)n+=rnd(1,3);
-  const x=n%a===0,y=n%b===0;
-  return{text:`Durch welche der Zahlen ${a} und ${b} ist diese Zahl teilbar?`,big:n,note,
-    opts:[`Durch beide (${a} und ${b})`,`Nur durch ${a}`,`Nur durch ${b}`,'Durch keine von beiden'],
-    c:x&&y?0:x?1:y?2:3,ex:explain(a,n)+' '+explain(b,n)};
+
+function genL2() {
+  let a, b, note = '';
+  if (S.active.size >= 2) [a, b] = shuf([...S.active]).slice(0, 2);
+  else {
+    a = [...S.active][0];
+    b = pick(ALL.filter(x => x !== a));
+    note = `Teiler ${b} ergänzt`;
+  }
+  const base = [a, b, lcm(a, b), 0][rnd(0, 3)];
+  let n = base ? mult(base, 20, 9999) : rnd(20, 9999);
+  if (Math.random() < .3) n += rnd(1, 3);
+  const x = n % a === 0, y = n % b === 0;
+  return {
+    text: `Durch welche der Zahlen <b>${a}</b> und <b>${b}</b> ist diese Zahl teilbar?`,
+    big: n,
+    note,
+    opts: [`Durch beide (${a} und ${b})`, `Nur durch ${a}`, `Nur durch ${b}`, 'Durch keine von beiden'],
+    c: x && y ? 0 : x ? 1 : y ? 2 : 3,
+    ex: explain(a, n) + ' ' + explain(b, n)
+  };
 }
-const IMM=t=>[`immer durch ${t} teilbar`,`manchmal durch ${t} teilbar`,`nie durch ${t} teilbar`];
-const COP=[[3,4],[2,5],[3,5],[4,9],[5,8],[3,8]],NCOP=[[2,4],[2,6],[4,6],[3,6],[6,9],[4,10],[6,8]],GS=[[4,6],[6,9],[6,10],[8,12],[10,15],[12,15]];
-const FAC={4:[2,2],6:[2,3],8:[2,4],9:[3,3],10:[2,5],12:[3,4],15:[3,5]};
-const TF=(st,ok,ex)=>({text:'Wahr oder falsch? '+st,opts:['Wahr','Falsch'],c:ok?0:1,ex:(ok?'Wahr. ':'Falsch. ')+ex});
-function genFS(){
-  const t=rnd(0,6),d=pick(ALL.filter(x=>x>=3));
-  if(t===0){const[p,q]=pick(NCOP),l=lcm(p,q);
-    return TF(`Ist eine Zahl durch ${p} und durch ${q} teilbar, dann ist sie auch durch ${p*q} teilbar.`,false,
-    `Gegenbeispiel: ${l} ist durch ${p} und durch ${q} teilbar, aber ${l} : ${p*q} geht nicht auf. Die Regel gilt nur für teilerfremde Zahlen wie 3 und 4 (→ 12).`);}
-  if(t===1){const[p,q]=pick(COP);
-    return TF(`Ist eine Zahl durch ${p} und durch ${q} teilbar, dann ist sie auch durch ${p*q} teilbar.`,true,
-    `${p} und ${q} haben keinen gemeinsamen Teiler (teilerfremd), daher steckt auch ${p}·${q} = ${p*q} in der Zahl. Beispiel: ${p*q*2} ist durch ${p}, ${q} und ${p*q} teilbar.`);}
-  if(t===2)return TF(`Ist a + b durch ${d} teilbar, dann sind a und b beide durch ${d} teilbar.`,false,
-    `Gegenbeispiel: a = 1 (Rest 1), b = ${d-1} (Rest ${d-1}). Die Reste ergeben 1 + ${d-1} = ${d}, also ist a + b = ${d} durch ${d} teilbar, a und b aber nicht.`);
-  if(t===3){const p=pick([2,3,5,7,11,13,4,6,8,9,10,12,15]),f=FAC[p];
-    return f?TF(`Ist a · b durch ${p} teilbar, dann ist a oder b durch ${p} teilbar.`,false,
+
+const IMM = t => [`immer durch ${t} teilbar`, `manchmal durch ${t} teilbar`, `nie durch ${t} teilbar`];
+const COP = [[3, 4], [2, 5], [3, 5], [4, 9], [5, 8], [3, 8]], NCOP = [[2, 4], [2, 6], [4, 6], [3, 6], [6, 9], [4, 10], [6, 8]], GS = [[4, 6], [6, 9], [6, 10], [8, 12], [10, 15], [12, 15]];
+const FAC = { 4: [2, 2], 6: [2, 3], 8: [2, 4], 9: [3, 3], 10: [2, 5], 12: [3, 4], 15: [3, 5] };
+const TF = (st, ok, ex) => ({ text: 'Wahr oder falsch? ' + st, opts: ['Wahr', 'Falsch'], c: ok ? 0 : 1, ex: (ok ? 'Wahr. ' : 'Falsch. ') + ex });
+
+function genFS() {
+  const t = rnd(0, 6), d = pick(ALL.filter(x => x >= 3));
+  if (t === 0) {
+    const [p, q] = pick(NCOP), l = lcm(p, q);
+    return TF(`Ist eine Zahl durch ${p} und durch ${q} teilbar, dann ist sie auch durch ${p * q} teilbar.`, false,
+      `Gegenbeispiel: ${l} ist durch ${p} und durch ${q} teilbar, aber ${l} : ${p * q} geht nicht auf. Die Regel gilt nur für teilerfremde Zahlen wie 3 und 4 (→ 12).`);
+  }
+  if (t === 1) {
+    const [p, q] = pick(COP);
+    return TF(`Ist eine Zahl durch ${p} und durch ${q} teilbar, dann ist sie auch durch ${p * q} teilbar.`, true,
+      `${p} und ${q} haben keinen gemeinsamen Teiler (teilerfremd), daher steckt auch ${p}·${q} = ${p * q} in der Zahl. Beispiel: ${p * q * 2} ist durch ${p}, ${q} und ${p * q} teilbar.`);
+  }
+  if (t === 2) return TF(`Ist a + b durch ${d} teilbar, dann sind a und b beide durch ${d} teilbar.`, false,
+    `Gegenbeispiel: a = 1 (Rest 1), b = ${d - 1} (Rest ${d - 1}). Die Reste ergeben 1 + ${d - 1} = ${d}, also ist a + b = ${d} durch ${d} teilbar, a und b aber nicht.`);
+  if (t === 3) {
+    const p = pick([2, 3, 5, 7, 11, 13, 4, 6, 8, 9, 10, 12, 15]), f = FAC[p];
+    return f ? TF(`Ist a · b durch ${p} teilbar, dann ist a oder b durch ${p} teilbar.`, false,
       `Gegenbeispiel: a = ${f[0]}, b = ${f[1]}: a · b = ${p} ist durch ${p} teilbar, aber weder ${f[0]} noch ${f[1]} ist es. (${p} ist keine Primzahl.)`)
-    :TF(`Ist a · b durch ${p} teilbar, dann ist a oder b durch ${p} teilbar.`,true,
-      `${p} ist eine Primzahl und lässt sich nicht auf zwei kleinere Faktoren verteilen, also steckt sie in a oder in b. Bei Zahlen wie 6 = 2·3 gilt das nicht.`);}
-  if(t===4)return rnd(0,1)?TF(`Sind a und b beide durch ${d} teilbar, dann ist auch a − b durch ${d} teilbar.`,true,
-    `a = ${d}·k und b = ${d}·l, also a − b = ${d}·(k − l). Beispiel: ${5*d} − ${2*d} = ${3*d}.`)
-    :TF(`Sind a und b beide durch ${d} teilbar, dann ist a · b durch ${d*d} teilbar.`,true,
-    `a = ${d}·k und b = ${d}·l, also a · b = ${d*d}·(k·l). Beispiel: ${2*d} · ${3*d} = ${6*d*d} = ${d*d}·6.`);
-  if(t===5)return TF(`Ist a durch ${d} und b nicht durch ${d} teilbar, dann ist a · b nicht durch ${d} teilbar.`,false,
-    `a = ${d}·k, also a · b = ${d}·(k·b) – das Produkt bleibt durch ${d} teilbar. Beispiel: a = ${2*d}, b = 1 (nicht durch ${d} teilbar), a · b = ${2*d}.`);
-  const[x,y]=pick(GS);
-  return TF(`Ist a durch ${x} und b durch ${y} teilbar, dann ist a + b durch ${x} teilbar.`,false,
-    `Gegenbeispiel: a = ${x}, b = ${y}: a + b = ${x+y} ist nicht durch ${x} teilbar. Sicher ist nur der gemeinsame Teiler ${gcd(x,y)}.`);
+      : TF(`Ist a · b durch ${p} teilbar, dann ist a oder b durch ${p} teilbar.`, true,
+        `${p} ist eine Primzahl und lässt sich nicht auf zwei kleinere Faktoren verteilen, also steckt sie in a oder in b. Bei Zahlen wie 6 = 2·3 gilt das nicht.`);
+  }
+  if (t === 4) return rnd(0, 1) ? TF(`Sind a und b beide durch ${d} teilbar, dann ist auch a − b durch ${d} teilbar.`, true,
+    `a = ${d}·k und b = ${d}·l, also a − b = ${d}·(k − l). Beispiel: ${5 * d} − ${2 * d} = ${3 * d}.`)
+    : TF(`Sind a und b beide durch ${d} teilbar, dann ist a · b durch ${d * d} teilbar.`, true,
+      `a = ${d}·k und b = ${d}·l, also a · b = ${d * d}·(k·l). Beispiel: ${2 * d} · ${3 * d} = ${6 * d * d} = ${d * d}·6.`);
+  if (t === 5) return TF(`Ist a durch ${d} und b nicht durch ${d} teilbar, dann ist a · b nicht durch ${d} teilbar.`, false,
+    `a = ${d}·k, also a · b = ${d}·(k·b) – das Produkt bleibt durch ${d} teilbar. Beispiel: a = ${2 * d}, b = 1 (nicht durch ${d} teilbar), a · b = ${2 * d}.`);
+  const [x, y] = pick(GS);
+  return TF(`Ist a durch ${x} und b durch ${y} teilbar, dann ist a + b durch ${x} teilbar.`, false,
+    `Gegenbeispiel: a = ${x}, b = ${y}: a + b = ${x + y} ist nicht durch ${x} teilbar. Sicher ist nur der gemeinsame Teiler ${gcd(x, y)}.`);
 }
-function genL3(){
-  const big=[...S.active].filter(x=>x>=3),act=[...S.active],dR=()=>pick(big.length?big:ALL.filter(x=>x>=3));
-  const k=pick(['rc','rc','rm','rm','fs','fs','fs','gs','gs','prod','pair','sumsame','sumnot','div']);
-  if(k==='rc'){const d=dR(),r1=rnd(1,d-1),r2=Math.random()<.5?d-r1:rnd(1,d-1),s=r1+r2,ok=s%d===0,a=2*d+r1,b=3*d+r2,u=a+b;
-    return{text:`a ist nicht durch ${d} teilbar (Rest ${r1}), b ist ebenfalls nicht durch ${d} teilbar (Rest ${r2}). Ist a + b durch ${d} teilbar?`,
-    opts:['Ja, a + b ist teilbar','Nein, a + b ist nicht teilbar'],c:ok?0:1,
-    ex:`Rechne mit den Resten: ${r1} + ${r2} = ${s}. `+(ok?`${s} ist durch ${d} teilbar, also hat a + b den Rest 0.`:`${s} lässt bei Division durch ${d} den Rest ${s%d}, nicht 0.`)+` Beispiel: a = ${a}, b = ${b}, a + b = ${u}; ${u} : ${d} = ${Math.floor(u/d)}`+(u%d?` Rest ${u%d}.`:' (geht auf).')};}
-  if(k==='rm'){const d=dR();
-    return{text:`a ist nicht durch ${d} teilbar und b ist ebenfalls nicht durch ${d} teilbar. Ist a + b durch ${d} teilbar?`,opts:['Immer','Nie','Manchmal'],c:2,
-    ex:`Es kommt auf die Reste an. Rest 1 + Rest ${d-1} = ${d}: a = ${d+1}, b = ${2*d-1}, a + b = ${3*d} ist teilbar. Aber Rest 1 + Rest 1 = 2: a = ${d+1}, b = ${2*d+1}, a + b = ${3*d+2} ist nicht teilbar.`};}
-  if(k==='fs')return genFS();
-  if(k==='gs'){const[x,y]=pick(GS),g=gcd(x,y),l=lcm(x,y),o=shuf([g,x,y,l]);
-    return{text:`a ist durch ${x} und b ist durch ${y} teilbar. Durch welche Zahl ist a + b sicher teilbar?`,opts:o.map(String),c:o.indexOf(g),
-    ex:`Gemeinsamer Teiler: a = ${g}·(${x/g}·k), b = ${g}·(${y/g}·l), also a + b = ${g}·(…). Für a = ${x}, b = ${y} ist a + b = ${x+y}, und das ist weder durch ${x}, ${y} noch ${l} teilbar.`};}
-  if(k==='sumsame'){const m=pick(act);return{text:`a ist durch ${m} teilbar und b ist durch ${m} teilbar. Die Summe a + b ist …`,opts:IMM(m),c:0,
-    ex:`Summenregel: a = ${m}·k und b = ${m}·l, also a + b = ${m}·(k + l). Beispiel: ${m*2} + ${m*3} = ${m*5}.`};}
-  if(k==='prod'){const m=pick(ALL);return{text:`a ist durch ${m} teilbar, b ist eine beliebige ganze Zahl. Das Produkt a · b ist …`,opts:IMM(m),c:0,
-    ex:`Produktregel: a = ${m}·k, also a · b = ${m}·(k·b). Der Faktor ${m} bleibt im Produkt erhalten.`};}
-  if(k==='pair'){const[m,n]=pick([[3,4],[2,5],[3,5],[2,7],[4,5],[3,7]]),o=shuf([m*n,m+n,2*m*n,m*n+m]);
-    return{text:`a ist durch ${m} teilbar und b ist durch ${n} teilbar. Durch welche Zahl ist a · b sicher teilbar?`,opts:o.map(String),c:o.indexOf(m*n),
-    ex:`a = ${m}·k und b = ${n}·l, also a · b = ${m*n}·(k·l). Die anderen Zahlen müssen keine Teiler sein: für a = ${m}, b = ${n} ist das Produkt genau ${m*n}.`};}
-  if(k==='sumnot'){const m=pick(ALL.filter(x=>x>=3));return{text:`a ist durch ${m} teilbar, b ist nicht durch ${m} teilbar. Die Summe a + b ist …`,opts:IMM(m),c:2,
-    ex:`Wäre a + b durch ${m} teilbar, dann auch (a + b) − a = b. Das widerspricht der Annahme. Beispiel: ${m} + 1 = ${m+1} hat Rest 1.`};}
-  const n=pick([6,10,12,15]),ds=[2,3,4,5,6,7,8,9,11].filter(x=>n%x===0&&x<n),c=pick(ds),o=shuf([c,...shuf([4,5,7,8,9,11].filter(x=>n%x)).slice(0,3)]);
-  return{text:`a ist durch ${n} teilbar. Durch welche Zahl ist a dann sicher auch teilbar?`,opts:o.map(String),c:o.indexOf(c),
-    ex:`${n} ist durch ${c} teilbar: a = ${n}·k = ${c}·(${n/c}·k). Die anderen Zahlen sind keine Teiler von ${n}; für a = ${n} klappt es dort nicht.`};
+
+function genL3() {
+  const big = [...S.active].filter(x => x >= 3), act = [...S.active], dR = () => pick(big.length ? big : ALL.filter(x => x >= 3));
+  const k = pick(['rc', 'rc', 'rm', 'rm', 'fs', 'fs', 'fs', 'gs', 'gs', 'prod', 'pair', 'sumsame', 'sumnot', 'div']);
+  if (k === 'rc') {
+    const d = dR(), r1 = rnd(1, d - 1), r2 = Math.random() < .5 ? d - r1 : rnd(1, d - 1), s = r1 + r2, ok = s % d === 0, a = 2 * d + r1, b = 3 * d + r2, u = a + b;
+    return {
+      text: `a ist nicht durch ${d} teilbar (Rest ${r1}), b ist ebenfalls nicht durch ${d} teilbar (Rest ${r2}). Ist a + b durch ${d} teilbar?`,
+      opts: ['Ja, a + b ist teilbar', 'Nein, a + b ist nicht teilbar'],
+      c: ok ? 0 : 1,
+      ex: `Rechne mit den Resten: ${r1} + ${r2} = ${s}. ` + (ok ? `${s} ist durch ${d} teilbar, also hat a + b den Rest 0.` : `${s} lässt bei Division durch ${d} den Rest ${s % d}, nicht 0.`) + ` Beispiel: a = ${a}, b = ${b}, a + b = ${u}; ${u} : ${d} = ${Math.floor(u / d)}` + (u % d ? ` Rest ${u % d}.` : ' (geht auf).')
+    };
+  }
+  if (k === 'rm') {
+    const d = dR();
+    return {
+      text: `a ist nicht durch ${d} teilbar und b ist ebenfalls nicht durch ${d} teilbar. Ist a + b durch ${d} teilbar?`,
+      opts: ['Immer', 'Nie', 'Manchmal'],
+      c: 2,
+      ex: `Es kommt auf die Reste an. Rest 1 + Rest ${d - 1} = ${d}: a = ${d + 1}, b = ${2 * d - 1}, a + b = ${3 * d} ist teilbar. Aber Rest 1 + Rest 1 = 2: a = ${d + 1}, b = ${2 * d + 1}, a + b = ${3 * d + 2} ist nicht teilbar.`
+    };
+  }
+  if (k === 'fs') return genFS();
+  if (k === 'gs') {
+    const [x, y] = pick(GS), g = gcd(x, y), l = lcm(x, y), o = shuf([g, x, y, l]);
+    return {
+      text: `a ist durch ${x} und b ist durch ${y} teilbar. Durch welche Zahl ist a + b sicher teilbar?`,
+      opts: o.map(String),
+      c: o.indexOf(g),
+      ex: `Gemeinsamer Teiler: a = ${g}·(${x / g}·k), b = ${g}·(${y / g}·l), also a + b = ${g}·(…). Für a = ${x}, b = ${y} ist a + b = ${x + y}, und das ist weder durch ${x}, ${y} noch ${l} teilbar.`
+    };
+  }
+  if (k === 'sumsame') {
+    const m = pick(act);
+    return {
+      text: `a ist durch ${m} teilbar und b ist durch ${m} teilbar. Die Summe a + b ist …`,
+      opts: IMM(m),
+      c: 0,
+      ex: `Summenregel: a = ${m}·k und b = ${m}·l, also a + b = ${m}·(k + l). Beispiel: ${m * 2} + ${m * 3} = ${m * 5}.`
+    };
+  }
+  if (k === 'prod') {
+    const m = pick(ALL);
+    return {
+      text: `a ist durch ${m} teilbar, b ist eine beliebige ganze Zahl. Das Produkt a · b ist …`,
+      opts: IMM(m),
+      c: 0,
+      ex: `Produktregel: a = ${m}·k, also a · b = ${m}·(k·b). Der Faktor ${m} bleibt im Produkt erhalten.`
+    };
+  }
+  if (k === 'pair') {
+    const [m, n] = pick([[3, 4], [2, 5], [3, 5], [2, 7], [4, 5], [3, 7]]), o = shuf([m * n, m + n, 2 * m * n, m * n + m]);
+    return {
+      text: `a ist durch ${m} teilbar und b ist durch ${n} teilbar. Durch welche Zahl ist a · b sicher teilbar?`,
+      opts: o.map(String),
+      c: o.indexOf(m * n),
+      ex: `a = ${m}·k und b = ${n}·l, also a · b = ${m * n}·(k·l). Die anderen Zahlen müssen keine Teiler sein: für a = ${m}, b = ${n} ist das Produkt genau ${m * n}.`
+    };
+  }
+  if (k === 'sumnot') {
+    const m = pick(ALL.filter(x => x >= 3));
+    return {
+      text: `a ist durch ${m} teilbar, b ist nicht durch ${m} teilbar. Die Summe a + b ist …`,
+      opts: IMM(m),
+      c: 2,
+      ex: `Wäre a + b durch ${m} teilbar, dann auch (a + b) − a = b. Das widerspricht der Annahme. Beispiel: ${m} + 1 = ${m + 1} hat Rest 1.`
+    };
+  }
+  const n = pick([6, 10, 12, 15]), ds = [2, 3, 4, 5, 6, 7, 8, 9, 11].filter(x => n % x === 0 && x < n), c = pick(ds), o = shuf([c, ...shuf([4, 5, 7, 8, 9, 11].filter(x => n % x)).slice(0, 3)]);
+  return {
+    text: `a ist durch ${n} teilbar. Durch welche Zahl ist a dann sicher auch teilbar?`,
+    opts: o.map(String),
+    c: o.indexOf(c),
+    ex: `${n} ist durch ${c} teilbar: a = ${n}·k = ${c}·(${n / c}·k). Die anderen Zahlen sind keine Teiler von ${n}; für a = ${n} klappt es dort nicht.`
+  };
 }
 
 /* ---------- Ablauf ---------- */
-function newQ(){
-  S.q=[null,genL1,genL2,genL3][S.level]();S.done=false;
-  $('qMeta').textContent=`Stufe ${S.level}: ${LV[S.level-1]}`+(S.q.note?` · ${S.q.note}`:'');
-  $('qText').textContent=S.q.text;
-  $('qBig').textContent=S.q.big??'';$('qBig').classList.toggle('hidden',S.q.big==null);
-  $('opts').className='grid gap-2 '+(S.q.opts.length===2?'grid-cols-2':'grid-cols-1 sm:grid-cols-2');
-  $('opts').innerHTML=S.q.opts.map((o,i)=>`<button class="btn" data-i="${i}">${S.q.opts.length>2?`${i+1}. `:''}${o}</button>`).join('');
-  $('opts').querySelectorAll('button').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
-  $('fb').classList.add('hidden');$('next').classList.add('hidden');
+function newQ() {
+  S.q = [null, genL1, genL2, genL3][S.level]();
+  S.done = false;
+  $('qMeta').textContent = `Stufe ${S.level}: ${LV[S.level - 1]}`;
+  $('qNote').textContent = S.q.note || '';
+  $('qNote').hidden = !S.q.note;
+  $('qText').innerHTML = S.q.text;
+  $('qBig').textContent = S.q.big ?? '';
+  $('qBig').hidden = S.q.big == null;
+  $('opts').className = 'options ' + (S.q.opts.length === 2 ? 'options--2' : 'options--wide');
+  $('opts').innerHTML = S.q.opts.map((o, i) => `<button type="button" class="option" data-i="${i}">${S.q.opts.length > 2 ? `${i + 1}. ` : ''}${o}</button>`).join('');
+  $('fb').innerHTML = '';
+  $('next').hidden = true;
 }
-function answer(i){
-  if(S.done)return;S.done=true;
-  const q=S.q,ok=i===q.c;let msg='';
+
+function answer(i) {
+  if (S.done) return;
+  S.done = true;
+  const q = S.q, ok = i === q.c;
+  let msg = '';
   S.total++;
-  if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+Math.min(S.streak-1,5)*2;S.run++;S.wrong=0;
-    if(S.mode==='adaptive'&&S.run>=S.thr){S.run=0;
-      if(S.level<3){S.level++;msg=`Aufstieg: weiter mit Stufe ${S.level}.`;}else msg='Alle Stufen gemeistert – du bleibst auf Stufe 3.';}
-  }else{S.streak=0;S.run=0;S.wrong++;
-    if(S.mode==='adaptive'&&S.wrong>=2&&S.level>1){S.level--;S.wrong=0;msg=`Zwei Fehler in Folge: zurück zu Stufe ${S.level}.`;}}
-  [...$('opts').children].forEach((b,j)=>{b.disabled=true;if(j===q.c)b.classList.add('ok');else if(j===i)b.classList.add('bad');});
-  const fb=$('fb');fb.style.background=ok?'var(--okbg)':'var(--badbg)';fb.style.color=ok?'var(--ok)':'var(--bad)';
-  fb.innerHTML=`<div class="font-extrabold text-lg">${ok?'✔ Richtig!':'✘ Leider falsch.'}</div>`+
-    (ok?'':`<div class="text-sm">Richtig wäre: ${q.opts[q.c]}</div>`)+
-    `<p class="text-sm" style="color:var(--ink)">${q.ex}</p>`+(msg?`<p class="text-sm font-semibold">${msg}</p>`:'');
-  fb.classList.remove('hidden');$('next').classList.remove('hidden');$('next').focus();
-  stats();
-}
-function stats(){saveS();
-  $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
-  $('bar').style.width=(S.mode==='adaptive'?Math.min(100,S.run/S.thr*100):0)+'%';
-  $('adaptInfo').textContent=`Aktuell Stufe ${S.level} – ${S.run} von ${S.thr} in Folge. Bei zwei Fehlern in Folge geht es eine Stufe zurück.`;
-}
-function cfg(){
-  $('divs').innerHTML=ALL.concat(PRO).map(d=>{const p=PRO.includes(d);return `<button class="chip ${p?'pro ':''}${S.active.has(d)?'on':''}" aria-pressed="${S.active.has(d)}" data-d="${d}">${d}${p?'<span class="badge">Profi</span>':''}</button>`}).join('');
-  $('divs').querySelectorAll('button').forEach(b=>b.onclick=()=>{const d=+b.dataset.d;
-    if(S.active.has(d)){if(S.active.size>1)S.active.delete(d);}else S.active.add(d);cfg();if(!S.done)newQ();});
-  $('divHint').textContent=S.active.size===1?'Mindestens ein Teiler bleibt aktiv.':'';
-  $('mManual').className='chip flex-1'+(S.mode==='manual'?' on':'');$('mAdapt').className='chip flex-1'+(S.mode==='adaptive'?' on':'');
-  $('mManual').textContent='Manuell';$('mAdapt').textContent='Adaptiv';
-  $('manualBox').classList.toggle('hidden',S.mode!=='manual');$('adaptBox').classList.toggle('hidden',S.mode!=='adaptive');
-  $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip text-left ${S.level===i+1?'on':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
-  $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;cfg();newQ();});
-  stats();
-}
-function setMode(m){S.mode=m;S.run=0;S.wrong=0;if(m==='adaptive')S.level=1;cfg();newQ();}
-$('mManual').onclick=()=>setMode('manual');$('mAdapt').onclick=()=>setMode('adaptive');
-$('thr').oninput=e=>{S.thr=+e.target.value;$('thrV').textContent=S.thr;S.run=Math.min(S.run,S.thr-1);stats();};
-$('next').onclick=()=>{S.done=false;newQ();};
-function theme(){const d=document.documentElement.classList.contains('dark');$('theme').textContent=d?'☀️ Hell':'🌙 Dunkel';}
-$('theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}theme();};
-document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT')return;
-  if(!S.done&&/^[1-4]$/.test(e.key)&&S.q.opts.length>2&&+e.key<=S.q.opts.length)answer(+e.key-1);
-  else if(S.done&&e.key==='Enter'){e.preventDefault();$('next').click();}
-});
-/* ---------- Tab 2: Regeln & Herleitungen ---------- */
-const REF={
-2:['Endziffer gerade (0, 2, 4, 6, 8).','n = 10r + e mit Endziffer e. 10r = 2·5r ist durch 2 teilbar, also gilt n ≡ e (mod 2).'],
-3:['Die Quersumme ist durch 3 teilbar.','10 ≡ 1 (mod 3), also 10^k ≡ 1. Für n = Σ zₖ·10^k folgt n ≡ Σ zₖ (mod 3): n hat denselben Rest wie seine Quersumme.'],
-4:['Die letzten zwei Ziffern bilden eine durch 4 teilbare Zahl.','100 = 4·25. Mit n = 100q + t (t = letzte zwei Ziffern) ist 100q durch 4 teilbar, also n ≡ t (mod 4).'],
-5:['Endziffer 0 oder 5.','n = 10r + e und 10r = 5·2r, also n ≡ e (mod 5). Nur e = 0 oder 5 ist durch 5 teilbar.'],
-6:['Die Zahl ist durch 2 und durch 3 teilbar.','6 = 2·3 mit teilerfremden Faktoren. Wer beide Primfaktoren enthält, ist durch 6 teilbar – und umgekehrt.'],
-7:['Letzte Ziffer verdoppeln und vom Rest abziehen. Ist das Ergebnis durch 7 teilbar, dann auch die Zahl. Beispiel: 343 → 34 − 2·3 = 28 ✓.','n = 10r + e. Dann ist 2n = 20r + 2e = 21r − (r − 2e). Da 21r durch 7 teilbar ist, gilt 7 | 2n ⇔ 7 | (r − 2e). Weil ggT(2, 7) = 1, folgt 7 | n ⇔ 7 | (r − 2e).'],
-8:['Die letzten drei Ziffern bilden eine durch 8 teilbare Zahl.','1000 = 8·125. Mit n = 1000q + t (t = letzte drei Ziffern) ist 1000q durch 8 teilbar, also n ≡ t (mod 8).'],
-9:['Die Quersumme ist durch 9 teilbar.','10 ≡ 1 (mod 9), also 10^k ≡ 1. Damit n ≡ Quersumme (mod 9).'],
-10:['Endziffer 0.','n = 10r + e. 10r ist durch 10 teilbar, also n ≡ e (mod 10). Nur e = 0 geht.'],
-11:['Wechselsumme: Ziffern von rechts abwechselnd addieren und subtrahieren. Ist sie durch 11 teilbar, dann auch die Zahl. Beispiel: 918082 → 2 − 8 + 0 − 8 + 1 − 9 = −22 ✓.','10 ≡ −1 (mod 11), also 10^k ≡ (−1)^k. Für n = Σ zₖ·10^k folgt n ≡ z₀ − z₁ + z₂ − … (mod 11).'],
-12:['Die Zahl ist durch 3 und durch 4 teilbar.','12 = 3·4 mit teilerfremden Faktoren. Prüfe 3 mit der Quersumme und 4 mit den letzten zwei Ziffern.'],
-13:['Letzte Ziffer mit 4 multiplizieren und zum Rest addieren. Ist das Ergebnis durch 13 teilbar, dann auch die Zahl. Beispiel: 273 → 27 + 4·3 = 39 ✓.','n = 10r + e. Dann ist 4n = 40r + 4e = 39r + (r + 4e). Da 39 = 3·13, gilt 13 | 4n ⇔ 13 | (r + 4e). Weil ggT(4, 13) = 1, folgt 13 | n ⇔ 13 | (r + 4e).'],
-14:['Die Zahl ist durch 2 und durch 7 teilbar.','14 = 2·7 mit teilerfremden Faktoren: gerade Endziffer und 7er-Trick.'],
-15:['Die Zahl ist durch 3 und durch 5 teilbar.','15 = 3·5, teilerfremd: Quersumme durch 3 und Endziffer 0 oder 5.'],
-16:['Die letzten vier Ziffern bilden eine durch 16 teilbare Zahl.','10000 = 16·625. Mit n = 10000q + t ist 10000q durch 16 teilbar, also n ≡ t (mod 16).'],
-17:['Letzte Ziffer mit 5 multiplizieren und vom Rest abziehen. Ist das Ergebnis durch 17 teilbar, dann auch die Zahl. Beispiel: 289 → 28 − 5·9 = −17 ✓.','n = 10r + e. Dann ist 5n = 50r + 5e = 51r − (r − 5e). Da 51 = 3·17, gilt 17 | 5n ⇔ 17 | (r − 5e). Weil ggT(5, 17) = 1, folgt 17 | n ⇔ 17 | (r − 5e).'],
-18:['Die Zahl ist gerade und ihre Quersumme ist durch 9 teilbar.','18 = 2·9 mit teilerfremden Faktoren: Endziffer gerade (2) und Quersumme (9).'],
-19:['Letzte Ziffer verdoppeln und zum Rest addieren. Ist das Ergebnis durch 19 teilbar, dann auch die Zahl. Beispiel: 361 → 36 + 2·1 = 38 ✓.','n = 10r + e. Dann ist 2n = 20r + 2e = 19r + (r + 2e). Da 19r durch 19 teilbar ist, gilt 19 | 2n ⇔ 19 | (r + 2e). Weil ggT(2, 19) = 1, folgt 19 | n ⇔ 19 | (r + 2e).']
-};
-function general(d){
-  if(gcd(d,10)===1){
-    let k=0,s=0;
-    for(let i=1;i<d&&!k;i++){const m=10*i%d;if(m===1){k=i;s=1}else if(m===d-1){k=i;s=-1}}
-    return `Für jeden Teiler d, der keinen gemeinsamen Teiler mit 10 hat, gibt es ein k mit 10·k ≡ ±1 (mod d). Mit n = 10r + e gilt dann k·n = 10k·r + k·e ≡ ±r + k·e. Für d = ${d} passt k = ${k}, denn 10·${k} = ${10*k} ≡ ${s>0?'1':'−1'} (mod ${d}). Also: ${d} | n ⇔ ${d} | (r ${s>0?'+':'−'} ${k}·e). Wiederholt man den Trick, entstehen für d = 3 und 9 die Quersumme, für d = 11 die Wechselsumme.`;
+  if (ok) {
+    S.right++;
+    S.streak++;
+    S.best = Math.max(S.best, S.streak);
+    S.score += 10 + Math.min(S.streak - 1, 5) * 2;
+    S.run++;
+    S.wrong = 0;
+    if (S.mode === 'adaptive' && S.run >= S.thr) {
+      S.run = 0;
+      if (S.level < 3) {
+        S.level++;
+        msg = `Stark – weiter mit Stufe ${S.level}!`;
+      } else {
+        msg = 'Alle Stufen gemeistert – du bleibst auf Stufe 3.';
+      }
+    }
+  } else {
+    S.streak = 0;
+    S.run = 0;
+    S.wrong++;
+    if (S.mode === 'adaptive' && S.wrong >= 2 && S.level > 1) {
+      S.level--;
+      S.wrong = 0;
+      msg = `Kein Problem – wir festigen Stufe ${S.level}.`;
+    }
   }
-  const f=[];let m=d;for(let p=2;p<=m;p++)if(m%p===0){let q=1;while(m%p===0){m/=p;q*=p}f.push(q)}
-  return (f.length>1?`Zerlege ${d} in teilerfremde Primzahlpotenzen: ${f.join(' · ')}. Prüfe jeden Faktor einzeln; gelten alle Regeln, gilt auch die Regel für ${d}. `:'')+
-    `Potenzen von 2 und 5 prüft man an den letzten Ziffern: 10^j ist durch 2^j und 5^j teilbar, also entscheiden nur die letzten j Ziffern.`;
+  [...$('opts').children].forEach((b, j) => {
+    b.disabled = true;
+    if (j === q.c) b.classList.add('is-ok');
+    else if (j === i) b.classList.add('is-bad');
+  });
+  $('fb').innerHTML = `<div class="feedback feedback--${ok ? 'ok' : 'bad'}">`
+    + `<div class="fb-title">${ok ? pick(PRAISE) : pick(OOPS)}</div>`
+    + (ok ? '' : `<div class="small">Richtig wäre: <b>${q.opts[q.c]}</b></div>`)
+    + `<p class="small fb-ex">${q.ex}</p>`
+    + (msg ? `<div class="fb-note">${msg}</div>` : '')
+    + `</div>`;
+  $('next').hidden = false;
+  saveS();
+  ui();
 }
-function refTab(){
-  $('tab2').innerHTML='<p class="mute text-sm">Tippe auf einen Teiler, um Regel, Herleitung und Verallgemeinerung zu sehen. Dabei ist n = 10r + e: r ist die Zahl ohne Endziffer, e die Endziffer.</p>'+
-  Array.from({length:18},(_,i)=>i+2).map(d=>`<details class="card p-3"><summary class="font-semibold cursor-pointer py-1">Teilbarkeit durch ${d}${PRO.includes(d)?'<span class="badge">Profi</span>':''}</summary>
-  <div class="space-y-3 mt-2 text-sm leading-relaxed"><div><h3 class="font-semibold">Die Regel</h3><p>${REF[d][0]}</p></div>
-  <div><h3 class="font-semibold">Herleitung</h3><p>${REF[d][1]}</p></div>
-  <div><h3 class="font-semibold">Verallgemeinerung</h3><p>${general(d)}</p></div></div></details>`).join('');
+
+function updateModeHelp() {
+  const txt = S.mode === 'adaptive'
+    ? `Die Stufe passt sich an: nach ${S.thr} richtigen Antworten in Folge geht es eine Stufe hoch, nach 2 Fehlern in Folge eine Stufe runter.`
+    : 'Wähle die Stufe selbst aus.';
+  tb.setProgress(S.mode === 'adaptive' ? S.run : 0, txt);
 }
-function showTab(t){
-  $('tab1').classList.toggle('hidden',t!==1);$('tab2').classList.toggle('hidden',t!==2);
-  $('t1').className='chip'+(t===1?' on':'');$('t2').className='chip'+(t===2?' on':'');
+
+function initControls() {
+  $('divs').innerHTML = ALL.concat(PRO).map(d => {
+    const p = PRO.includes(d);
+    return `<button type="button" class="chip${p ? ' chip--pro' : ''}" aria-label="Teiler ${d}${p ? ' (Profi)' : ''}" aria-pressed="false" data-d="${d}">${d}${p ? '<small>Profi</small>' : ''}</button>`;
+  }).join('');
+  $('lvls').innerHTML = LV.map((l, i) =>
+    `<button type="button" class="chip chip--left" aria-label="Stufe ${i + 1}: ${l}" aria-pressed="false" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`
+  ).join('');
 }
-$('t1').onclick=()=>showTab(1);$('t2').onclick=()=>showTab(2);
-function loadS(){try{const o=JSON.parse(localStorage.getItem('tz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}}
-function saveS(){try{localStorage.setItem('tz',JSON.stringify({s:S.score,b:S.best,r:S.right,t:S.total}))}catch(e){}}
-loadS();refTab();showTab(1);
-theme();cfg();newQ();
+
+function ui() {
+  $('divs').querySelectorAll('button[data-d]').forEach(b => {
+    const on = S.active.has(+b.dataset.d);
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  const onlyOne = S.active.size === 1;
+  $('divHint').textContent = onlyOne ? 'Mindestens ein Teiler bleibt aktiv.' : '';
+  $('divHint').hidden = !onlyOne;
+
+  $('manualBox').hidden = S.mode !== 'manual';
+  $('lvls').querySelectorAll('button[data-l]').forEach(b => {
+    const on = +b.dataset.l === S.level;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+
+  $('sScore').textContent = S.score;
+  $('sStreak').textContent = S.streak;
+  $('sBest').textContent = S.best;
+  $('sRate').textContent = `${S.right}/${S.total}`;
+  $('sLevel').textContent = S.level;
+  updateModeHelp();
+}
+
+/* ---------- Ereignisse ---------- */
+$('opts').addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]');
+  if (!b || S.done) return;
+  answer(+b.dataset.i);
+});
+
+$('divs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]');
+  if (!b) return;
+  keepScroll(() => keepFocus(() => {
+    const d = +b.dataset.d;
+    if (S.active.has(d)) {
+      if (S.active.size > 1) S.active.delete(d);
+    } else {
+      S.active.add(d);
+    }
+    ui();
+    if (!S.done) newQ();
+  }));
+});
+
+$('lvls').addEventListener('click', e => {
+  const b = e.target.closest('button[data-l]');
+  if (!b || S.mode !== 'manual') return;
+  keepScroll(() => keepFocus(() => {
+    S.level = +b.dataset.l;
+    S.run = S.wrong = 0;
+    ui();
+    newQ();
+  }));
+});
+
+tb.addEventListener('modechange', e => keepScroll(() => {
+  S.mode = e.detail.mode;
+  S.run = S.wrong = 0;
+  ui();
+  newQ();
+}));
+
+tb.addEventListener('thresholdchange', e => keepScroll(() => {
+  S.thr = e.detail.value;
+  S.run = Math.min(S.run, S.thr - 1);
+  updateModeHelp();
+}));
+
+tb.addEventListener('tabchange', e => keepScroll(() => {
+  showTab(e.detail.tab);
+}));
+
+$('next').onclick = () => newQ();
+
+$('reset').onclick = () => keepScroll(() => {
+  Object.assign(S, { score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0 });
+  if (S.mode === 'adaptive') S.level = 1;
+  saveS();
+  ui();
+  newQ();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.repeat || tb.tab !== 'practice') return;
+  if (!S.done && /^[1-4]$/.test(e.key) && S.q.opts.length > 2 && +e.key <= S.q.opts.length) {
+    if (window.MathPortal && MathPortal.ui && MathPortal.ui.isControl(e.target)) return;
+    e.preventDefault();
+    answer(+e.key - 1);
+  } else if (S.done && e.key === 'Enter') {
+    if (window.MathPortal && MathPortal.ui && MathPortal.ui.isControl(e.target)) return;
+    e.preventDefault();
+    newQ();
+  }
+});
+
+/* ---------- Tab 2: Regeln & Herleitungen ---------- */
+const REF = {
+  2: ['Endziffer gerade (0, 2, 4, 6, 8).', 'n = 10r + e mit Endziffer e. 10r = 2·5r ist durch 2 teilbar, also gilt n ≡ e (mod 2).'],
+  3: ['Die Quersumme ist durch 3 teilbar.', '10 ≡ 1 (mod 3), also 10^k ≡ 1. Für n = Σ zₖ·10^k folgt n ≡ Σ zₖ (mod 3): n hat denselben Rest wie seine Quersumme.'],
+  4: ['Die letzten zwei Ziffern bilden eine durch 4 teilbare Zahl.', '100 = 4·25. Mit n = 100q + t (t = letzte zwei Ziffern) ist 100q durch 4 teilbar, also n ≡ t (mod 4).'],
+  5: ['Endziffer 0 oder 5.', 'n = 10r + e und 10r = 5·2r, also n ≡ e (mod 5). Nur e = 0 oder 5 ist durch 5 teilbar.'],
+  6: ['Die Zahl ist durch 2 und durch 3 teilbar.', '6 = 2·3 mit teilerfremden Faktoren. Wer beide Primfaktoren enthält, ist durch 6 teilbar – und umgekehrt.'],
+  7: ['Letzte Ziffer verdoppeln und vom Rest abziehen. Ist das Ergebnis durch 7 teilbar, dann auch die Zahl. Beispiel: 343 → 34 − 2·3 = 28 ✓.', 'n = 10r + e. Dann ist 2n = 20r + 2e = 21r − (r − 2e). Da 21r durch 7 teilbar ist, gilt 7 | 2n ⇔ 7 | (r − 2e). Weil ggT(2, 7) = 1, folgt 7 | n ⇔ 7 | (r − 2e).'],
+  8: ['Die letzten drei Ziffern bilden eine durch 8 teilbare Zahl.', '1000 = 8·125. Mit n = 1000q + t (t = letzte drei Ziffern) ist 1000q durch 8 teilbar, also n ≡ t (mod 8).'],
+  9: ['Die Quersumme ist durch 9 teilbar.', '10 ≡ 1 (mod 9), also 10^k ≡ 1. Damit n ≡ Quersumme (mod 9).'],
+  10: ['Endziffer 0.', 'n = 10r + e. 10r ist durch 10 teilbar, also n ≡ e (mod 10). Nur e = 0 geht.'],
+  11: ['Wechselsumme: Ziffern von rechts abwechselnd addieren und subtrahieren. Ist sie durch 11 teilbar, dann auch die Zahl. Beispiel: 918082 → 2 − 8 + 0 − 8 + 1 − 9 = −22 ✓.', '10 ≡ −1 (mod 11), also 10^k ≡ (−1)^k. Für n = Σ zₖ·10^k folgt n ≡ z₀ − z₁ + z₂ − … (mod 11).'],
+  12: ['Die Zahl ist durch 3 und durch 4 teilbar.', '12 = 3·4 mit teilerfremden Faktoren. Prüfe 3 mit der Quersumme und 4 mit den letzten zwei Ziffern.'],
+  13: ['Letzte Ziffer mit 4 multiplizieren und zum Rest addieren. Ist das Ergebnis durch 13 teilbar, dann auch die Zahl. Beispiel: 273 → 27 + 4·3 = 39 ✓.', 'n = 10r + e. Dann ist 4n = 40r + 4e = 39r + (r + 4e). Da 39 = 3·13, gilt 13 | 4n ⇔ 13 | (r + 4e). Weil ggT(4, 13) = 1, folgt 13 | n ⇔ 13 | (r + 4e).'],
+  14: ['Die Zahl ist durch 2 und durch 7 teilbar.', '14 = 2·7 mit teilerfremden Faktoren: gerade Endziffer und 7er-Trick.'],
+  15: ['Die Zahl ist durch 3 und durch 5 teilbar.', '15 = 3·5, teilerfremd: Quersumme durch 3 und Endziffer 0 oder 5.'],
+  16: ['Die letzten vier Ziffern bilden eine durch 16 teilbare Zahl.', '10000 = 16·625. Mit n = 10000q + t ist 10000q durch 16 teilbar, also n ≡ t (mod 16).'],
+  17: ['Letzte Ziffer mit 5 multiplizieren und vom Rest abziehen. Ist das Ergebnis durch 17 teilbar, dann auch die Zahl. Beispiel: 289 → 28 − 5·9 = −17 ✓.', 'n = 10r + e. Dann ist 5n = 50r + 5e = 51r − (r − 5e). Da 51 = 3·17, gilt 17 | 5n ⇔ 17 | (r − 5e). Weil ggT(5, 17) = 1, folgt 17 | n ⇔ 17 | (r − 5e).'],
+  18: ['Die Zahl ist gerade und ihre Quersumme ist durch 9 teilbar.', '18 = 2·9 mit teilerfremden Faktoren: Endziffer gerade (2) und Quersumme (9).'],
+  19: ['Letzte Ziffer verdoppeln und zum Rest addieren. Ist das Ergebnis durch 19 teilbar, dann auch die Zahl. Beispiel: 361 → 36 + 2·1 = 38 ✓.', 'n = 10r + e. Dann ist 2n = 20r + 2e = 19r + (r + 2e). Da 19r durch 19 teilbar ist, gilt 19 | 2n ⇔ 19 | (r + 2e). Weil ggT(2, 19) = 1, folgt 19 | n ⇔ 19 | (r + 2e).']
+};
+
+function general(d) {
+  if (gcd(d, 10) === 1) {
+    let k = 0, s = 0;
+    for (let i = 1; i < d && !k; i++) {
+      const m = 10 * i % d;
+      if (m === 1) { k = i; s = 1; }
+      else if (m === d - 1) { k = i; s = -1; }
+    }
+    return `Für jeden Teiler d, der keinen gemeinsamen Teiler mit 10 hat, gibt es ein k mit 10·k ≡ ±1 (mod d). Mit n = 10r + e gilt dann k·n = 10k·r + k·e ≡ ±r + k·e. Für d = ${d} passt k = ${k}, denn 10·${k} = ${10 * k} ≡ ${s > 0 ? '1' : '−1'} (mod ${d}). Also: ${d} | n ⇔ ${d} | (r ${s > 0 ? '+' : '−'} ${k}·e). Wiederholt man den Trick, entstehen für d = 3 und 9 die Quersumme, für d = 11 die Wechselsumme.`;
+  }
+  const f = [];
+  let m = d;
+  for (let p = 2; p <= m; p++) {
+    if (m % p === 0) {
+      let q = 1;
+      while (m % p === 0) { m /= p; q *= p; }
+      f.push(q);
+    }
+  }
+  return (f.length > 1 ? `Zerlege ${d} in teilerfremde Primzahlpotenzen: ${f.join(' · ')}. Prüfe jeden Faktor einzeln; gelten alle Regeln, gilt auch die Regel für ${d}. ` : '')
+    + `Potenzen von 2 und 5 prüft man an den letzten Ziffern: 10^j ist durch 2^j und 5^j teilbar, also entscheiden nur die letzten j Ziffern.`;
+}
+
+function refTab() {
+  $('tab2').innerHTML = '<p class="mute small">Tippe auf einen Teiler, um Regel, Herleitung und Verallgemeinerung zu sehen. Dabei ist n = 10r + e: r ist die Zahl ohne Endziffer, e die Endziffer.</p>'
+    + Array.from({ length: 18 }, (_, i) => i + 2).map(d =>
+      `<details class="card pad-sm"><summary class="summary">Teilbarkeit durch ${d}${PRO.includes(d) ? '<span class="badge">Profi</span>' : ''}</summary>`
+      + `<div class="ref"><div><h3>Die Regel</h3><p>${REF[d][0]}</p></div>`
+      + `<div><h3>Herleitung</h3><p>${REF[d][1]}</p></div>`
+      + `<div><h3>Verallgemeinerung</h3><p>${general(d)}</p></div></div></details>`
+    ).join('');
+}
+
+function showTab(tabName) {
+  const isRules = tabName === 'rules';
+  $('tab1').hidden = isRules;
+  $('tab2').hidden = !isRules;
+}
+
+function loadS() {
+  try {
+    const o = JSON.parse(localStorage.getItem('tz') || 'null');
+    if (o) {
+      S.score = o.s | 0;
+      S.best = o.b | 0;
+      S.right = o.r | 0;
+      S.total = o.t | 0;
+    }
+  } catch (e) {}
+}
+
+function saveS() {
+  try {
+    localStorage.setItem('tz', JSON.stringify({ s: S.score, b: S.best, r: S.right, t: S.total }));
+  } catch (e) {}
+}
+
+loadS();
+refTab();
+initControls();
+showTab(tb.tab);
+ui();
+newQ();
 </script>
 </body>
 </html>
