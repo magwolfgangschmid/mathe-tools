@@ -191,7 +191,7 @@ function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed',n2=note||(k==='to_
   $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${n2?` <small>(${n2})</small>`:''}</div>`);}
 function adv(rev){const q=S.q;addChain(q.st,rev);
   if(q.seq[q.st]==='to_imp'&&!rev)q.impBonus=true;
-  if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'&&q.imp){
+  if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'&&q.imp&&q.rd>1){
     q.se=0;q.awaitImpChoice=true;
     $('hint').textContent='';
     $('gt').textContent=`Schritt ${q.st+1} erledigt – gemischte Zahl noch als Plus-Aufgabe in einen unechten Bruch verwandeln (+1 Bonuspunkt)?`;
@@ -258,7 +258,7 @@ function gcheck(none){
     if(!v[0]&&!v[1])return hint('Gib eine ganze Zahl und/oder einen Bruch an.');
     if(v[1]&&!v[2])return hint('Gib zum Zähler auch den Nenner an.');
     if(v[2]&&!d)return hint('Der Nenner darf nicht 0 sein.');
-    if(w>0&&v[1]&&z>=d)return hint('Der Bruchteil der gemischten Zahl muss kleiner als 1 sein.',1);
+    if(v[1]&&z>=d)return hint(w>0?'Der Bruchteil der gemischten Zahl muss kleiner als 1 sein.':'Schreibe das Ergebnis als gemischte Zahl (oder ganze Zahl), nicht als unechten Bruch.',1);
     const val=q.gs*(w*d+z),targetN=q.N<0?-q.rn:q.rn;
     if(k==='wb_mix'){
       if(val*q.L===q.N*d)return adv();
@@ -362,7 +362,7 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
   const q=S.q;S.done=true;S.total++;let msg='';
-  if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
+  if(q.gd&&!q.seq.includes('ws')&&(q.mx||bonus))addChain(q.seq.length,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
     if(bonus){S.score++;msg=q.impBonus?'+1 Bonuspunkt: Super, auch in einen unechten Bruch verwandelt! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
