@@ -1,244 +1,323 @@
-  <!-- Zeile 180: S.okRun >= 3  Zahl der Versuche für nächsten Level -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Satz des Pythagoras – Übungen</title>
-<script>
-(function(){var d=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;try{var s=localStorage.getItem('pyth-theme');if(s)d=s==='dark'}catch(e){}document.documentElement.classList.toggle('dark',d)})();
-</script>
-<script src="https://cdn.tailwindcss.com/3.4.17"></script>
-<script>tailwind.config={darkMode:'class'}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/style.css?v=2026-11-20">
+<script src="../../shared/components.js?v=2026-11-20"></script>
+<style>
+.pyth-tri { max-width: 26rem; width: 100%; margin: 0 auto; }
+.pyth-tri svg { display: block; width: 100%; height: auto; user-select: none; overflow: visible; }
+.pyth-poly { fill: var(--soft); }
+.pyth-sq { stroke: var(--mute); }
+.pyth-side { stroke: var(--ink); }
+.pyth-side--ok { stroke: var(--ok); }
+.pyth-side--bad { stroke: var(--bad); }
+.pyth-side--mark { stroke: var(--warn); }
+.pyth-label { fill: var(--ink); font-size: 19px; font-weight: 700; }
+.pyth-opts { display: grid; gap: .5rem; }
+@media (min-width: 640px) { .pyth-opts { grid-template-columns: 1fr 1fr; } }
+.pyth-numrow { display: flex; gap: .5rem; align-items: stretch; }
+.pyth-numrow .input { flex: 1 1 0; width: 0; min-width: 0; text-align: left; padding-inline: .85rem; }
+.pyth-way { margin-top: .25rem; padding: .55rem .75rem; border-radius: var(--radius-sm); background: var(--card); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875rem; line-height: 1.45; }
+.pyth-grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+@media (min-width: 640px) { .pyth-grid-6 { grid-template-columns: repeat(6, 1fr); } }
+.pyth-grid-6 .chip { min-width: 0; width: 100%; padding-inline: .45rem; }
+.pyth-reset-wrap { text-align: center; }
+</style>
 </head>
-<body class="min-h-screen bg-stone-50 text-slate-900 transition-colors duration-300 dark:bg-slate-900 dark:text-slate-100">
-<div class="mx-auto max-w-3xl p-4 sm:p-6">
-  <header class="flex items-center justify-between gap-3">
-    <div>
-      <h1 class="text-2xl font-extrabold sm:text-3xl">Satz des Pythagoras</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400">Übungen für die Sekundarstufe</p>
-    </div>
-    <button id="theme" aria-label="Zwischen hellem und dunklem Design wechseln" class="rounded-full border border-slate-300 bg-white p-3 shadow-sm transition-colors hover:border-teal-500 dark:border-slate-600 dark:bg-slate-800">
-      <svg class="hidden h-6 w-6 text-amber-400 dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      <svg class="h-6 w-6 text-slate-700 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-    </button>
-  </header>
+<body>
 
-  <section class="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div id="modes" class="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-700">
-        <button data-mode="adaptive">Adaptiv</button>
-        <button data-mode="manual">Manuell</button>
-      </div>
-      <div id="lvls" class="flex gap-1.5"></div>
-    </div>
-    <p id="modeinfo" class="mt-2 text-sm text-slate-500 dark:text-slate-400"></p>
+<app-header title="Satz des Pythagoras" subtitle="Übungen für die Sekundarstufe" back-url="../../"></app-header>
+
+<main class="app">
+
+  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="4" min="2" max="8" label-manual="Manuell" label-adaptive="Auto" collapsible-auto></app-mode-toolbar>
+
+  <section id="manualBox" class="card pad stack-sm" aria-label="Stufenauswahl" hidden>
+    <h2>Stufe wählen</h2>
+    <div id="lvls" class="pyth-grid-6"></div>
   </section>
 
-  <section class="mt-4 grid grid-cols-3 gap-3 text-center">
-    <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800"><div id="sScore" class="text-2xl font-extrabold">0/0</div><div class="text-xs text-slate-500 dark:text-slate-400">richtig</div></div>
-    <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800"><div class="text-2xl font-extrabold">🔥 <span id="sStreak">0</span></div><div class="text-xs text-slate-500 dark:text-slate-400">Serie (Bestwert <span id="sBest">0</span>)</div></div>
-    <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800"><div id="sLevel" class="text-2xl font-extrabold">1</div><div class="text-xs text-slate-500 dark:text-slate-400">Stufe</div></div>
+  <section class="card pad pad-lg stack" aria-label="Aufgabe">
+    <div class="row row--between">
+      <span id="badge" class="pill"></span>
+      <span id="tr" class="pill" hidden>Taschenrechner erlaubt</span>
+    </div>
+    <p id="q" class="q-text"></p>
+    <div id="tri" class="pyth-tri"></div>
+    <div id="opts" class="pyth-opts"></div>
+    <div id="numbox" class="pyth-numrow" hidden>
+      <input id="num" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="Ergebnis">
+      <button id="check" class="btn btn-primary" type="button">Prüfen</button>
+    </div>
+    <div id="fb" class="fb-slot" aria-live="polite"></div>
+    <div class="row">
+      <button id="next" class="btn btn-primary btn-block" type="button" hidden>Weiter</button>
+    </div>
   </section>
 
-  <main class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <span id="badge" class="rounded-full bg-teal-100 px-3 py-1 text-sm font-bold text-teal-800 dark:bg-teal-900/50 dark:text-teal-200"></span>
-      <span id="tr" class="hidden rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Taschenrechner erlaubt</span>
+  <section class="card pad stack" aria-label="Fortschritt">
+    <h2>Dein Fortschritt</h2>
+    <div class="stats">
+      <div class="stat"><div id="sScore" class="stat-value">0/0</div><div class="mute small">richtig</div></div>
+      <div class="stat"><div id="sStreak" class="stat-value">0</div><div class="mute small">Serie (Bestwert <span id="sBest">0</span>)</div></div>
+      <div class="stat"><div id="sLevel" class="stat-value">1</div><div class="mute small">Stufe</div></div>
     </div>
-    <p id="q" class="mt-4 text-lg font-semibold sm:text-xl"></p>
-    <div id="tri" class="mx-auto mt-3 max-w-md"></div>
-    <div id="opts" class="mt-4 grid gap-2 sm:grid-cols-2"></div>
-    <div id="numbox" class="mt-4 hidden">
-      <div class="flex gap-2">
-        <input id="num" inputmode="decimal" autocomplete="off" placeholder="Ergebnis" class="min-w-0 flex-1 rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-lg focus:border-teal-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900">
-        <button id="check" class="rounded-xl bg-teal-600 px-5 py-3 font-bold text-white transition-colors hover:bg-teal-700">Prüfen</button>
-      </div>
+    <div class="pyth-reset-wrap">
+      <button id="reset" class="btn btn-ghost small" type="button">Zähler zurücksetzen</button>
     </div>
-    <div id="fb" class="hidden" aria-live="polite"></div>
-    <button id="next" class="mt-4 hidden w-full rounded-xl bg-teal-600 py-3 text-lg font-bold text-white transition-colors hover:bg-teal-700">Weiter</button>
-  </main>
-  <p class="mt-4 text-center"><button id="reset" class="text-sm text-slate-500 underline dark:text-slate-400">Zähler zurücksetzen</button></p>
-</div>
+  </section>
+
+</main>
 
 <script>
-const $=s=>document.querySelector(s);
-const LET='abcdefhjkmnopqrtuvwxyz'.split(''); // ohne i, g, s, l
-const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-const pick=a=>a[rnd(0,a.length-1)];
-const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
-const letters=n=>shuffle(LET).slice(0,n);
-const fmt=x=>String(x).replace('.',',');
-const TITLES=['Hypotenuse und Katheten','Gleichung aufstellen','Umformen','Kopfrechnen mit Tripeln','Ganzzahlig mit Taschenrechner','Dezimalzahlen mit Taschenrechner'];
-const PRAISE=['Super, genau richtig!','Stark gemacht!','Perfekt!','Top, weiter so!','Richtig – das sitzt!'];
-const OOPS=['Nicht ganz – schau noch einmal genau hin.','Knapp daneben, das schaffst du!','Noch nicht richtig, aber gleich hast du es.'];
-const BTN='rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-left text-lg font-semibold transition-colors hover:border-teal-500 dark:border-slate-600 dark:bg-slate-800';
-const OK='rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3 text-left text-lg font-semibold text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100';
-const BAD='rounded-xl border-2 border-rose-500 bg-rose-50 px-4 py-3 text-left text-lg font-semibold text-rose-900 dark:bg-rose-900/40 dark:text-rose-100';
-const S={mode:'adaptive',level:1,score:0,total:0,streak:0,best:0,okRun:0,badRun:0,task:null,answered:false};
+const $ = s => document.querySelector(s);
+const tb = $('#tb');
+const LET = 'abcdefhjkmnopqrtuvwxyz'.split(''); // ohne i, g, s, l
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[rnd(0, a.length - 1)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const letters = n => shuffle(LET).slice(0, n);
+const fmt = x => String(x).replace('.', ',');
+const TITLES = [
+  'Hypotenuse und Katheten',
+  'Gleichung aufstellen',
+  'Umformen',
+  'Kopfrechnen mit Tripeln',
+  'Ganzzahlig mit Taschenrechner',
+  'Dezimalzahlen mit Taschenrechner'
+];
+const PRAISE = ['Super, genau richtig!', 'Stark gemacht!', 'Perfekt!', 'Top, weiter so!', 'Richtig – das sitzt!'];
+const OOPS = ['Nicht ganz – schau noch einmal genau hin.', 'Knapp daneben, das schaffst du!', 'Noch nicht richtig, aber gleich hast du es.'];
+const S = { mode: 'adaptive', level: 1, thr: tb.threshold, score: 0, total: 0, streak: 0, best: 0, okRun: 0, badRun: 0, task: null, answered: false };
+
+function keepScroll(fn) {
+  if (window.MathPortal && MathPortal.ui && MathPortal.ui.keepScroll) MathPortal.ui.keepScroll(fn);
+  else fn();
+}
+
+function updateModeHelp() {
+  const txt = S.mode === 'adaptive'
+    ? `Die Stufe passt sich an: nach ${S.thr} richtigen Antworten in Folge geht es eine Stufe hoch, nach 2 Fehlern in Folge eine Stufe runter.`
+    : 'Wähle die Stufe selbst aus.';
+  tb.setProgress(S.mode === 'adaptive' ? S.okRun : 0, txt);
+}
 
 /* ---------- Geometrie / SVG ---------- */
-function geom(){
-  const p=rnd(110,170),q=rnd(70,120),t=Math.random()*6.283,c=Math.cos(t),s=Math.sin(t),m=Math.random()<.5?-1:1;
-  const P=[[0,0],[p*m,0],[0,-q]].map(([x,y])=>[x*c-y*s,x*s+y*c]);
-  const xs=P.map(v=>v[0]),ys=P.map(v=>v[1]);
-  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
-  const k=Math.min(240/(x1-x0),150/(y1-y0));
-  const ox=(320-(x1-x0)*k)/2,oy=(210-(y1-y0)*k)/2;
-  return P.map(([x,y])=>[(x-x0)*k+ox,(y-y0)*k+oy]);
+function geom() {
+  const p = rnd(110, 170), q = rnd(70, 120), t = Math.random() * 6.283, c = Math.cos(t), s = Math.sin(t), m = Math.random() < .5 ? -1 : 1;
+  const P = [[0, 0], [p * m, 0], [0, -q]].map(([x, y]) => [x * c - y * s, x * s + y * c]);
+  const xs = P.map(v => v[0]), ys = P.map(v => v[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const k = Math.min(240 / (x1 - x0), 150 / (y1 - y0));
+  const ox = (320 - (x1 - x0) * k) / 2, oy = (210 - (y1 - y0) * k) / 2;
+  return P.map(([x, y]) => [(x - x0) * k + ox, (y - y0) * k + oy]);
 }
-const f1=n=>n.toFixed(1);
-const unit=(A,B)=>{const d=Math.hypot(B[0]-A[0],B[1]-A[1]);return[(B[0]-A[0])/d,(B[1]-A[1])/d]};
-function drawTri(P,names,o={}){
-  const cen=[(P[0][0]+P[1][0]+P[2][0])/3,(P[0][1]+P[1][1]+P[2][1])/3];
-  let s=`<svg viewBox="0 0 320 210" class="h-auto w-full select-none overflow-visible" role="img" aria-label="Rechtwinkliges Dreieck">`;
-  s+=`<polygon points="${P.map(p=>f1(p[0])+','+f1(p[1])).join(' ')}" class="fill-teal-50 dark:fill-teal-900/30"/>`;
-  const u=unit(P[0],P[1]),v=unit(P[0],P[2]),m=14;
-  const a=[P[0][0]+u[0]*m,P[0][1]+u[1]*m],b=[a[0]+v[0]*m,a[1]+v[1]*m],c=[P[0][0]+v[0]*m,P[0][1]+v[1]*m];
-  s+=`<path d="M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}L${f1(c[0])} ${f1(c[1])}" fill="none" stroke-width="2" class="stroke-slate-500 dark:stroke-slate-400"/>`;
-  [[0,1],[0,2],[1,2]].forEach(([i,j],k)=>{
-    const A=P[i],B=P[j],xy=`x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}"`;
-    const cls=(o.cls&&o.cls[k])||'stroke-slate-700 dark:stroke-slate-200';
-    s+=`<line ${xy} stroke-width="5" stroke-linecap="round" class="${cls}"/>`;
-    if(o.click)s+=`<line ${xy} data-i="${k}" stroke="transparent" stroke-width="34" stroke-linecap="round" style="pointer-events:stroke;cursor:pointer"/>`;
-    const mx=(A[0]+B[0])/2,my=(A[1]+B[1])/2,dx=mx-cen[0],dy=my-cen[1],d=Math.hypot(dx,dy)||1;
-    const off=14+Math.abs(dx/d)*String(names[k]).length*5.5+Math.abs(dy/d)*8;
-    s+=`<text x="${f1(mx+dx/d*off)}" y="${f1(my+dy/d*off)}" text-anchor="middle" dominant-baseline="central" font-size="19" font-weight="700" class="fill-slate-900 dark:fill-slate-50">${names[k]}</text>`;
+const f1 = n => n.toFixed(1);
+const unit = (A, B) => { const d = Math.hypot(B[0] - A[0], B[1] - A[1]); return [(B[0] - A[0]) / d, (B[1] - A[1]) / d]; };
+function drawTri(P, names, o = {}) {
+  const cen = [(P[0][0] + P[1][0] + P[2][0]) / 3, (P[0][1] + P[1][1] + P[2][1]) / 3];
+  let s = `<svg viewBox="0 0 320 210" role="img" aria-label="Rechtwinkliges Dreieck">`;
+  s += `<polygon points="${P.map(p => f1(p[0]) + ',' + f1(p[1])).join(' ')}" class="pyth-poly"/>`;
+  const u = unit(P[0], P[1]), v = unit(P[0], P[2]), m = 14;
+  const a = [P[0][0] + u[0] * m, P[0][1] + u[1] * m], b = [a[0] + v[0] * m, a[1] + v[1] * m], c = [P[0][0] + v[0] * m, P[0][1] + v[1] * m];
+  s += `<path d="M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}L${f1(c[0])} ${f1(c[1])}" fill="none" stroke-width="2" class="pyth-sq"/>`;
+  [[0, 1], [0, 2], [1, 2]].forEach(([i, j], k) => {
+    const A = P[i], B = P[j], xy = `x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}"`;
+    const cls = (o.cls && o.cls[k]) || 'pyth-side';
+    s += `<line ${xy} stroke-width="5" stroke-linecap="round" class="${cls}"/>`;
+    if (o.click) s += `<line ${xy} data-i="${k}" stroke="transparent" stroke-width="34" stroke-linecap="round" style="pointer-events:stroke;cursor:pointer"/>`;
+    const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2, dx = mx - cen[0], dy = my - cen[1], d = Math.hypot(dx, dy) || 1;
+    const off = 14 + Math.abs(dx / d) * String(names[k]).length * 5.5 + Math.abs(dy / d) * 8;
+    s += `<text x="${f1(mx + dx / d * off)}" y="${f1(my + dy / d * off)}" text-anchor="middle" dominant-baseline="central" class="pyth-label">${names[k]}</text>`;
   });
-  return s+'</svg>';
+  return s + '</svg>';
 }
 
 /* ---------- Aufgaben ---------- */
-const mc=(ok,bad)=>{const o=shuffle([ok,...bad]);return{opts:o,ans:o.indexOf(ok)}};
+const mc = (ok, bad) => { const o = shuffle([ok, ...bad]); return { opts: o, ans: o.indexOf(ok) }; };
 
-function t1(){
-  const P=geom(),L=letters(3),r=Math.random();
-  const hint='Die Hypotenuse liegt immer gegenüber dem rechten Winkel und ist die längste Seite. Die Katheten liegen am rechten Winkel an.';
-  if(r<.34)return{lv:1,type:'tap',P,names:L,ans:[2],hint,q:'Tippe auf die <b>Hypotenuse</b>.'};
-  if(r<.67)return{lv:1,type:'tap',P,names:L,ans:[0,1],hint,q:'Tippe auf eine <b>Kathete</b>.'};
-  const m=rnd(0,2);
-  return{lv:1,type:'mc',P,names:L,mark:m,opts:['Kathete','Hypotenuse'],ans:m===2?1:0,hint,q:`Die orange markierte Seite <b>${L[m]}</b> ist eine …`};
+function t1() {
+  const P = geom(), L = letters(3), r = Math.random();
+  const hint = 'Die Hypotenuse liegt immer gegenüber dem rechten Winkel und ist die längste Seite. Die Katheten liegen am rechten Winkel an.';
+  if (r < .34) return { lv: 1, type: 'tap', P, names: L, ans: [2], hint, q: 'Tippe auf die <b>Hypotenuse</b>.' };
+  if (r < .67) return { lv: 1, type: 'tap', P, names: L, ans: [0, 1], hint, q: 'Tippe auf eine <b>Kathete</b>.' };
+  const m = rnd(0, 2);
+  return { lv: 1, type: 'mc', P, names: L, mark: m, opts: ['Kathete', 'Hypotenuse'], ans: m === 2 ? 1 : 0, hint, q: `Die markierte Seite <b>${L[m]}</b> ist eine …` };
 }
-function t2(){
-  const P=geom(),[x,y,z]=letters(3),k=Math.random()<.5?[x,y]:[y,x];
-  const ok=Math.random()<.5?`${k[0]}² + ${k[1]}² = ${z}²`:`${z}² = ${k[0]}² + ${k[1]}²`;
-  const bad=shuffle([`${x}² + ${z}² = ${y}²`,`${y}² + ${z}² = ${x}²`,`${x} + ${y} = ${z}`,`${x}² + ${y}² = ${z}`]).slice(0,3);
-  return{lv:2,type:'mc',P,names:[x,y,z],...mc(ok,bad),q:'Welche Gleichung beschreibt den Satz des Pythagoras für dieses Dreieck?',hint:`Die Hypotenuse ist <b>${z}</b> (gegenüber dem rechten Winkel). Ihr Quadrat steht allein: Kathete² + Kathete² = Hypotenuse².`};
+function t2() {
+  const P = geom(), [x, y, z] = letters(3), k = Math.random() < .5 ? [x, y] : [y, x];
+  const ok = Math.random() < .5 ? `${k[0]}² + ${k[1]}² = ${z}²` : `${z}² = ${k[0]}² + ${k[1]}²`;
+  const bad = shuffle([`${x}² + ${z}² = ${y}²`, `${y}² + ${z}² = ${x}²`, `${x} + ${y} = ${z}`, `${x}² + ${y}² = ${z}`]).slice(0, 3);
+  return { lv: 2, type: 'mc', P, names: [x, y, z], ...mc(ok, bad), q: 'Welche Gleichung beschreibt den Satz des Pythagoras für dieses Dreieck?', hint: `Die Hypotenuse ist <b>${z}</b> (gegenüber dem rechten Winkel). Ihr Quadrat steht allein: Kathete² + Kathete² = Hypotenuse².` };
 }
-function t3(){
-  const [a,b,c]=letters(3),w=pick([a,b,c]);
-  const base=pick([`${a}² + ${b}² = ${c}²`,`${b}² + ${a}² = ${c}²`,`${c}² = ${a}² + ${b}²`]);
-  let ok,bad,hint;
-  if(w===c){ok=`${c} = √(${a}² + ${b}²)`;bad=[`${c} = √(${a}² − ${b}²)`,`${c} = ${a}² + ${b}²`,`${c} = ${a} + ${b}`];hint='Die Hypotenuse erhältst du, indem du die Quadrate der Katheten <b>addierst</b> und daraus die Wurzel ziehst.'}
-  else{const o=w===a?b:a;ok=`${w} = √(${c}² − ${o}²)`;bad=[`${w} = √(${c}² + ${o}²)`,`${w} = ${c} − ${o}`,`${w} = √(${o}² − ${c}²)`];hint='Eine Kathete erhältst du, indem du vom Hypotenusenquadrat das andere Kathetenquadrat <b>abziehst</b> und daraus die Wurzel ziehst.'}
-  return{lv:3,type:'mc',...mc(ok,bad),q:`Gegeben: <b>${base}</b><br>Stelle nach <b>${w}</b> um.`,hint};
-}
-function way(n,v,miss,ans,int){
-  const r=int?'= '+ans:'≈ '+fmt(ans);
-  if(miss===2)return`${n[2]}² = ${n[0]}² + ${n[1]}²<br>${n[2]} = √(${v[0]}² + ${v[1]}²) = √${v[0]**2+v[1]**2} ${r}`;
-  const o=1-miss;
-  return`${n[miss]}² = ${n[2]}² − ${n[o]}²<br>${n[miss]} = √(${v[2]}² − ${v[o]}²) = √${v[2]**2-v[o]**2} ${r}`;
-}
-const numHint=m=>m===2?'Gesucht ist die Hypotenuse: Quadrate addieren, dann die Wurzel ziehen.':'Gesucht ist eine Kathete: Quadrate subtrahieren (Hypotenuse² − Kathete²), dann die Wurzel ziehen.';
-const TRIP4=[[3,4,5],[6,8,10],[9,12,15],[12,16,20],[15,20,25],[5,12,13],[8,15,17],[7,24,25]];
-const TRIP5=[[20,21,29],[9,40,41],[10,24,26],[18,24,30],[11,60,61],[12,35,37],[13,84,85],[16,30,34],[14,48,50],[21,28,35],[24,32,40],[27,36,45],[15,36,39],[28,45,53],[33,56,65],[36,77,85],[39,80,89],[48,55,73],[65,72,97],[16,63,65]];
-function tripTask(lv,pool,qText){
-  const T=pick(pool),v=Math.random()<.5?[T[1],T[0],T[2]]:T.slice(),n=letters(3),miss=Math.random()<.5?2:rnd(0,1);
-  return{lv,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans:v[miss],
-    q:qText(n[miss]),hint:numHint(miss),way:way(n,v,miss,v[miss],true)};
-}
-function t4(){
-  return tripTask(4,TRIP4,m=>`Berechne die Seite <b>${m}</b> im Kopf.`);
-}
-function t5(){
-  return tripTask(5,TRIP5,m=>`Berechne die Seite <b>${m}</b> mit dem Taschenrechner (ganzzahliges Ergebnis).`);
-}
-function t6(){
-  const odd=()=>rnd(2,17)*2+1,n=letters(3),dp=rnd(1,2),miss=Math.random()<.5?2:rnd(0,1);
-  let v,ex;
-  for(;;){
-    const a=odd();
-    if(miss===2){const b=odd();ex=Math.sqrt(a*a+b*b);if(Number.isInteger(ex))continue;v=[a,b,0];break}
-    const h=a+2*rnd(1,8);ex=Math.sqrt(h*h-a*a);if(Number.isInteger(ex))continue;
-    v=miss===0?[0,a,h]:[a,0,h];break;
+function t3() {
+  const [a, b, c] = letters(3), w = pick([a, b, c]);
+  const base = pick([`${a}² + ${b}² = ${c}²`, `${b}² + ${a}² = ${c}²`, `${c}² = ${a}² + ${b}²`]);
+  let ok, bad, hint;
+  if (w === c) {
+    ok = `${c} = √(${a}² + ${b}²)`;
+    bad = [`${c} = √(${a}² − ${b}²)`, `${c} = ${a}² + ${b}²`, `${c} = ${a} + ${b}`];
+    hint = 'Die Hypotenuse erhältst du, indem du die Quadrate der Katheten <b>addierst</b> und daraus die Wurzel ziehst.';
+  } else {
+    const o = w === a ? b : a;
+    ok = `${w} = √(${c}² − ${o}²)`;
+    bad = [`${w} = √(${c}² + ${o}²)`, `${w} = ${c} − ${o}`, `${w} = √(${o}² − ${c}²)`];
+    hint = 'Eine Kathete erhältst du, indem du vom Hypotenusenquadrat das andere Kathetenquadrat <b>abziehst</b> und daraus die Wurzel ziehst.';
   }
-  const ans=Number(ex.toFixed(dp));
-  return{lv:6,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans,
-    q:`Berechne die Seite <b>${n[miss]}</b> und runde auf <b>${dp} Dezimalstelle${dp>1?'n':''}</b>.`,hint:numHint(miss),way:way(n,v,miss,ans,false)};
+  return { lv: 3, type: 'mc', ...mc(ok, bad), q: `Gegeben: <b>${base}</b><br>Stelle nach <b>${w}</b> um.`, hint };
+}
+function way(n, v, miss, ans, int) {
+  const r = int ? '= ' + ans : '≈ ' + fmt(ans);
+  if (miss === 2) return `${n[2]}² = ${n[0]}² + ${n[1]}²<br>${n[2]} = √(${v[0]}² + ${v[1]}²) = √${v[0] ** 2 + v[1] ** 2} ${r}`;
+  const o = 1 - miss;
+  return `${n[miss]}² = ${n[2]}² − ${n[o]}²<br>${n[miss]} = √(${v[2]}² − ${v[o]}²) = √${v[2] ** 2 - v[o] ** 2} ${r}`;
+}
+const numHint = m => m === 2 ? 'Gesucht ist die Hypotenuse: Quadrate addieren, dann die Wurzel ziehen.' : 'Gesucht ist eine Kathete: Quadrate subtrahieren (Hypotenuse² − Kathete²), dann die Wurzel ziehen.';
+const TRIP4 = [[3, 4, 5], [6, 8, 10], [9, 12, 15], [12, 16, 20], [15, 20, 25], [5, 12, 13], [8, 15, 17], [7, 24, 25]];
+const TRIP5 = [[20, 21, 29], [9, 40, 41], [10, 24, 26], [18, 24, 30], [11, 60, 61], [12, 35, 37], [13, 84, 85], [16, 30, 34], [14, 48, 50], [21, 28, 35], [24, 32, 40], [27, 36, 45], [15, 36, 39], [28, 45, 53], [33, 56, 65], [36, 77, 85], [39, 80, 89], [48, 55, 73], [65, 72, 97], [16, 63, 65]];
+function tripTask(lv, pool, qText) {
+  const T = pick(pool), v = Math.random() < .5 ? [T[1], T[0], T[2]] : T.slice(), n = letters(3), miss = Math.random() < .5 ? 2 : rnd(0, 1);
+  return { lv, type: 'num', P: geom(), names: n.map((x, k) => k === miss ? `${x} = ?` : `${x} = ${v[k]}`), ans: v[miss],
+    q: qText(n[miss]), hint: numHint(miss), way: way(n, v, miss, v[miss], true) };
+}
+function t4() {
+  return tripTask(4, TRIP4, m => `Berechne die Seite <b>${m}</b> im Kopf.`);
+}
+function t5() {
+  return tripTask(5, TRIP5, m => `Berechne die Seite <b>${m}</b> mit dem Taschenrechner (ganzzahliges Ergebnis).`);
+}
+function t6() {
+  const odd = () => rnd(2, 17) * 2 + 1, n = letters(3), dp = rnd(1, 2), miss = Math.random() < .5 ? 2 : rnd(0, 1);
+  let v, ex;
+  for (;;) {
+    const a = odd();
+    if (miss === 2) { const b = odd(); ex = Math.sqrt(a * a + b * b); if (Number.isInteger(ex)) continue; v = [a, b, 0]; break; }
+    const h = a + 2 * rnd(1, 8); ex = Math.sqrt(h * h - a * a); if (Number.isInteger(ex)) continue;
+    v = miss === 0 ? [0, a, h] : [a, 0, h]; break;
+  }
+  const ans = Number(ex.toFixed(dp));
+  return { lv: 6, type: 'num', P: geom(), names: n.map((x, k) => k === miss ? `${x} = ?` : `${x} = ${v[k]}`), ans,
+    q: `Berechne die Seite <b>${n[miss]}</b> und runde auf <b>${dp} Dezimalstelle${dp > 1 ? 'n' : ''}</b>.`, hint: numHint(miss), way: way(n, v, miss, ans, false) };
 }
 
 /* ---------- Ablauf ---------- */
-function newTask(){S.task=[t1,t2,t3,t4,t5,t6][S.level-1]();S.answered=false;render()}
-function render(){
-  const t=S.task;
-  $('#badge').textContent=`Stufe ${t.lv}: ${TITLES[t.lv-1]}`;
-  $('#tr').classList.toggle('hidden',t.lv<5);
-  $('#q').innerHTML=t.q;
-  $('#tri').innerHTML=t.P?drawTri(t.P,t.names,{click:t.type==='tap',cls:t.mark!=null?{[t.mark]:'stroke-amber-500'}:null}):'';
-  $('#opts').innerHTML=(t.opts||[]).map((o,i)=>`<button data-i="${i}" class="${BTN}">${o}</button>`).join('');
-  $('#numbox').classList.toggle('hidden',t.type!=='num');
-  $('#num').value='';$('#num').disabled=false;$('#check').disabled=false;
-  $('#fb').className='hidden';$('#next').classList.add('hidden');
+function newTask(noFocus) {
+  S.task = [t1, t2, t3, t4, t5, t6][S.level - 1]();
+  S.answered = false;
+  render(noFocus === true);
 }
-function finish(ok){
-  if(S.answered)return;S.answered=true;S.total++;
-  if(ok){S.score++;S.streak++;S.best=Math.max(S.best,S.streak);S.okRun++;S.badRun=0}else{S.streak=0;S.badRun++;S.okRun=0}
-  let note='';
-  if(S.mode==='adaptive'){
-    if(S.okRun>=4&&S.level<6){S.level++;S.okRun=0;note=`Stark – weiter mit Stufe ${S.level}!`}
-    else if(S.badRun>=2&&S.level>1){S.level--;S.badRun=0;note=`Kein Problem – wir festigen Stufe ${S.level}.`}
+function render(skipFocus) {
+  const t = S.task;
+  $('#badge').textContent = `Stufe ${t.lv}: ${TITLES[t.lv - 1]}`;
+  $('#tr').hidden = t.lv < 5;
+  $('#q').innerHTML = t.q;
+  $('#tri').innerHTML = t.P ? drawTri(t.P, t.names, { click: t.type === 'tap', cls: t.mark != null ? { [t.mark]: 'pyth-side--mark' } : null }) : '';
+  $('#opts').innerHTML = (t.opts || []).map((o, i) => `<button type="button" data-i="${i}" class="option">${o}</button>`).join('');
+  $('#numbox').hidden = t.type !== 'num';
+  $('#num').value = ''; $('#num').disabled = false; $('#check').disabled = false;
+  $('#fb').innerHTML = ''; $('#next').hidden = true;
+  if (!skipFocus && t.type === 'num') $('#num').focus({ preventScroll: true });
+}
+function finish(ok) {
+  if (S.answered) return; S.answered = true; S.total++;
+  if (ok) { S.score++; S.streak++; S.best = Math.max(S.best, S.streak); S.okRun++; S.badRun = 0; }
+  else { S.streak = 0; S.badRun++; S.okRun = 0; }
+  let note = '';
+  if (S.mode === 'adaptive') {
+    if (S.okRun >= S.thr && S.level < 6) { S.level++; S.okRun = 0; note = `Stark – weiter mit Stufe ${S.level}!`; }
+    else if (S.badRun >= 2 && S.level > 1) { S.level--; S.badRun = 0; note = `Kein Problem – wir festigen Stufe ${S.level}.`; }
   }
-  const t=S.task,fb=$('#fb');
-  fb.className='mt-4 rounded-xl border p-4 '+(ok?'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-100':'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-100');
-  fb.innerHTML=`<div class="font-bold">${ok?pick(PRAISE):pick(OOPS)}</div>`
-    +(!ok&&t.hint?`<div class="mt-1">Tipp: ${t.hint}</div>`:'')
-    +(t.way?`<div class="mt-2 rounded-lg bg-white/60 p-2 font-mono text-sm dark:bg-black/20">${t.way}</div>`:'')
-    +(note?`<div class="mt-2 font-semibold">${note}</div>`:'');
-  $('#next').classList.remove('hidden');
+  const t = S.task;
+  $('#fb').innerHTML = `<div class="feedback feedback--${ok ? 'ok' : 'bad'}">`
+    + `<div class="fb-title">${ok ? pick(PRAISE) : pick(OOPS)}</div>`
+    + (!ok && t.hint ? `<div>Tipp: ${t.hint}</div>` : '')
+    + (t.way ? `<div class="pyth-way">${t.way}</div>` : '')
+    + (note ? `<div class="fb-note">${note}</div>` : '')
+    + `</div>`;
+  $('#next').hidden = false;
   ui();
-  
 }
-function checkNum(){
-  if(S.answered)return;
-  const raw=$('#num').value.trim().replace(',','.'),v=Number(raw);
-  if(raw===''||isNaN(v)){$('#num').focus({preventScroll: true});return}
-  $('#num').disabled=true;$('#check').disabled=true;
-  finish(Math.abs(v-S.task.ans)<1e-6);
+function checkNum() {
+  if (S.answered) return;
+  const raw = $('#num').value.trim().replace(',', '.'), v = Number(raw);
+  if (raw === '' || isNaN(v)) { $('#num').focus({ preventScroll: true }); return; }
+  $('#num').disabled = true; $('#check').disabled = true;
+  finish(Math.abs(v - S.task.ans) < 1e-6);
 }
-function ui(){
-  const on='bg-white text-teal-700 shadow dark:bg-slate-900 dark:text-teal-300',off='text-slate-600 dark:text-slate-300';
-  document.querySelectorAll('#modes button').forEach(b=>b.className='rounded-lg px-4 py-2 text-sm font-bold transition-colors '+(b.dataset.mode===S.mode?on:off));
-  $('#lvls').innerHTML=[1,2,3,4,5,6].map(n=>`<button data-l="${n}" title="${TITLES[n-1]}" ${S.mode==='adaptive'?'disabled':''} class="h-10 w-10 rounded-lg font-bold ${n===S.level?'bg-teal-600 text-white':'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'} ${S.mode==='manual'?'hover:ring-2 hover:ring-teal-500':''}">${n}</button>`).join('');
-  $('#modeinfo').textContent=S.mode==='adaptive'?'Die Stufe passt sich an: 3 richtige Antworten in Folge steigen auf, 2 Fehler in Folge senken sie.':'Wähle die Stufe selbst aus.';
-  $('#sScore').textContent=`${S.score}/${S.total}`;$('#sStreak').textContent=S.streak;$('#sBest').textContent=S.best;$('#sLevel').textContent=S.level;
+function ui() {
+  $('#manualBox').hidden = S.mode === 'adaptive';
+  $('#lvls').innerHTML = [1, 2, 3, 4, 5, 6].map(n =>
+    `<button type="button" data-l="${n}" title="${TITLES[n - 1]}" aria-pressed="${n === S.level}" class="chip ${n === S.level ? 'is-active' : ''}">${n}</button>`
+  ).join('');
+  $('#sScore').textContent = `${S.score}/${S.total}`;
+  $('#sStreak').textContent = S.streak;
+  $('#sBest').textContent = S.best;
+  $('#sLevel').textContent = S.level;
+  updateModeHelp();
 }
 
 /* ---------- Ereignisse ---------- */
-$('#opts').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-i]');if(!b||S.answered)return;
-  const i=+b.dataset.i,t=S.task;
-  [...$('#opts').children].forEach((c,k)=>{c.className=k===t.ans?OK:k===i?BAD:BTN+' opacity-60';c.disabled=true});
-  finish(i===t.ans);
+$('#opts').addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]'); if (!b || S.answered) return;
+  const i = +b.dataset.i, t = S.task;
+  [...$('#opts').children].forEach((c, k) => {
+    if (k === t.ans) c.classList.add('is-ok');
+    else if (k === i) c.classList.add('is-bad');
+    c.disabled = true;
+  });
+  finish(i === t.ans);
 });
-$('#tri').addEventListener('click',e=>{
-  const l=e.target.closest('[data-i]'),t=S.task;if(!l||S.answered||t.type!=='tap')return;
-  const i=+l.dataset.i,ok=t.ans.includes(i),cls={};
-  t.ans.forEach(a=>cls[a]='stroke-emerald-500');if(!ok)cls[i]='stroke-rose-500';
-  $('#tri').innerHTML=drawTri(t.P,t.names,{cls});
+$('#tri').addEventListener('click', e => {
+  const l = e.target.closest('[data-i]'), t = S.task; if (!l || S.answered || t.type !== 'tap') return;
+  const i = +l.dataset.i, ok = t.ans.includes(i), cls = {};
+  t.ans.forEach(a => cls[a] = 'pyth-side--ok');
+  if (!ok) cls[i] = 'pyth-side--bad';
+  $('#tri').innerHTML = drawTri(t.P, t.names, { cls });
   finish(ok);
 });
-$('#check').onclick=checkNum;
-$('#next').onclick=newTask;
-$('#modes').onclick=e=>{const b=e.target.closest('[data-mode]');if(!b||b.dataset.mode===S.mode)return;S.mode=b.dataset.mode;S.okRun=S.badRun=0;ui();newTask()};
-$('#lvls').onclick=e=>{const b=e.target.closest('[data-l]');if(!b||S.mode!=='manual')return;S.level=+b.dataset.l;S.okRun=S.badRun=0;ui();newTask()};
-$('#reset').onclick=()=>{Object.assign(S,{score:0,total:0,streak:0,best:0,okRun:0,badRun:0});if(S.mode==='adaptive')S.level=1;ui();newTask()};
-$('#theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('pyth-theme',d?'dark':'light')}catch(e){}};
-document.addEventListener('keydown',e=>{
-  if(e.key!=='Enter')return;
-  if(e.target.id==='num'&&!S.answered)checkNum();
-  else if(S.answered&&e.target.tagName!=='BUTTON')newTask();
+$('#check').onclick = checkNum;
+$('#next').onclick = () => newTask(false);
+
+tb.addEventListener('modechange', e => keepScroll(() => {
+  S.mode = e.detail.mode;
+  S.okRun = S.badRun = 0;
+  ui();
+  newTask(true);
+}));
+tb.addEventListener('thresholdchange', e => keepScroll(() => {
+  S.thr = e.detail.value;
+  S.okRun = Math.min(S.okRun, S.thr - 1);
+  updateModeHelp();
+}));
+
+$('#lvls').addEventListener('click', e => {
+  const b = e.target.closest('[data-l]'); if (!b || S.mode !== 'manual') return;
+  keepScroll(() => {
+    S.level = +b.dataset.l;
+    S.okRun = S.badRun = 0;
+    ui();
+    newTask(true);
+  });
 });
-ui();newTask();
+$('#reset').onclick = () => keepScroll(() => {
+  Object.assign(S, { score: 0, total: 0, streak: 0, best: 0, okRun: 0, badRun: 0 });
+  if (S.mode === 'adaptive') S.level = 1;
+  ui();
+  newTask(true);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'num' && !S.answered) { e.preventDefault(); checkNum(); }
+  else if (S.answered && !(window.MathPortal && MathPortal.ui && MathPortal.ui.isControl(e.target))) { e.preventDefault(); newTask(false); }
+});
+
+ui();
+newTask(true);
 </script>
 </body>
 </html>
