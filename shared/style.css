@@ -21,6 +21,11 @@
    13. <app-header> (Web Component)
    14. <app-mode-toolbar> (Web Component)
    15. Umrechnen-App (Bruch ↔ Dezimalzahl)
+   16. App-übergreifende Bausteine (Zusatz-Schalter-Grid, Punkte-Leiste,
+       Eingabe .fin, Rechenweg-Kette, geführter Schritt)
+
+   Cache (GitHub Pages): Beim Einbinden eine Versionsnummer anhängen und bei
+   jeder Änderung erhöhen, z. B. href="../../shared/style.css?v=2026-11-20"
    ========================================================= */
 
 
@@ -151,6 +156,8 @@ h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
   padding: .65rem 1.1rem;
 }
 
+.btn-ghost.is-active { background: var(--acc); color: var(--acc-fg); border-color: var(--acc); }   /* z. B. Kopfrechnen aktiv (auch im Dark-Mode lesbar) */
+
 .btn-theme { padding: .5rem .75rem; font-size: 1.125rem; font-weight: 600; }
 
 
@@ -171,6 +178,8 @@ h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
 
 .chip.is-active { background: var(--acc); color: var(--acc-fg); border-color: var(--acc); }
 
+.chip.is-active:disabled { opacity: 1; }   /* aktiv + gesperrt (z. B. Auto-Modus) bleibt gut lesbar */
+
 .chip--pro { background: var(--pro); }
 .chip--pro.is-active { background: var(--pro-on); color: var(--pro-on-fg); border-color: var(--acc); }
 
@@ -190,6 +199,7 @@ h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
 .hint { text-align: center; font-size: .875rem; font-weight: 600; }
 .hint.is-bad  { color: var(--bad); }
 .hint.is-warn { color: var(--warn); }
+.hint.is-ok   { color: var(--ok); }
 
 
 /* ---------- 8. Eingaben, Schieberegler, Fortschritt ---------- */
@@ -205,6 +215,9 @@ h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
   font-weight: 600;
   font-size: 1.1rem;
 }
+
+/* Platzhalter („Zähler“, „Nenner“, „ganz“) kleiner, damit sie im 4rem-Feld nicht abgeschnitten werden */
+.input::placeholder { font-size: .8rem; font-weight: 400; }
 
 input[type=range] { accent-color: var(--acc); width: 100%; }
 
@@ -410,3 +423,41 @@ app-mode-toolbar { display: grid; gap: .75rem; }
 .stat-value--lg { font-size: 1.875rem; line-height: 2.25rem; }
 
 .progress > div { transition: width .3s; }
+
+
+/* ---------- 16. App-übergreifende Bausteine ---------- */
+
+/* Zusatz-Schalter: responsives Grid; zu lange Beschriftung blendet am Rand aus
+   (Klasse .is-fade setzt MathPortal.ui.fade() in components.js) */
+.switch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(45%, 155px), 1fr)); gap: .45rem; }
+.switch-grid .chip { min-width: 0; width: 100%; overflow: hidden; white-space: nowrap; padding-inline: .6rem; }
+.switch-grid .chip.is-fade {
+  justify-content: flex-start;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 1.2rem), transparent);
+          mask-image: linear-gradient(90deg, #000 calc(100% - 1.2rem), transparent);
+}
+
+/* Einzeilige Leiste unter den Punkte-Kacheln (Kopfrechnen | Punkte zurücksetzen) */
+.score-actions { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: .5rem; }
+.score-actions .btn { flex: 0 0 auto; white-space: nowrap; }
+
+/* Eingabe einer (gemischten) Zahl: [+/−] [ganz] Zähler/Nenner */
+.fin { display: inline-flex; flex-direction: row; align-items: center; gap: .4rem; vertical-align: middle; }
+.fin .fin-w { align-self: center; width: 3.6rem; text-align: center; }
+.fin .answer-frac { display: inline-flex; flex-direction: column; align-items: center; }
+.op { font-weight: 800; }
+
+/* Rechenweg-Kette: .chain-step (Karte, Addition) bzw. .chain-row (Zeile, Kürzen/Multiplizieren) */
+.chain { display: grid; gap: .4rem; }
+.chain:empty { display: none; }
+.chain-step {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+  background: var(--soft); border-radius: var(--radius-sm); padding: .5rem .75rem; font-size: .95rem;
+}
+.chain-step .tag { color: var(--ok); font-weight: 800; }
+.chain-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.chain-row > b { color: var(--ok); }
+
+/* Geführter Schritt (gestrichelter Rahmen) */
+.guide { display: grid; justify-items: center; gap: .6rem; border: 1.5px dashed var(--acc); border-radius: var(--radius-sm); padding: .75rem; }
+.guide-title { font-weight: 600; font-size: .95rem; text-align: center; }
