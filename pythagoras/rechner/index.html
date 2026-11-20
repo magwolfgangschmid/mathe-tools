@@ -69,7 +69,7 @@ const pick=a=>a[rnd(0,a.length-1)];
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
 const letters=n=>shuffle(LET).slice(0,n);
 const fmt=x=>String(x).replace('.',',');
-const TITLES=['Hypotenuse und Katheten','Gleichung aufstellen','Umformen','Kopfrechnen mit Tripeln','Mit Taschenrechner'];
+const TITLES=['Hypotenuse und Katheten','Gleichung aufstellen','Umformen','Kopfrechnen mit Tripeln','Ganzzahlig mit Taschenrechner','Dezimalzahlen mit Taschenrechner'];
 const PRAISE=['Super, genau richtig!','Stark gemacht!','Perfekt!','Top, weiter so!','Richtig – das sitzt!'];
 const OOPS=['Nicht ganz – schau noch einmal genau hin.','Knapp daneben, das schaffst du!','Noch nicht richtig, aber gleich hast du es.'];
 const BTN='rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-left text-lg font-semibold transition-colors hover:border-teal-500 dark:border-slate-600 dark:bg-slate-800';
@@ -140,13 +140,20 @@ function way(n,v,miss,ans,int){
   return`${n[miss]}² = ${n[2]}² − ${n[o]}²<br>${n[miss]} = √(${v[2]}² − ${v[o]}²) = √${v[2]**2-v[o]**2} ${r}`;
 }
 const numHint=m=>m===2?'Gesucht ist die Hypotenuse: Quadrate addieren, dann die Wurzel ziehen.':'Gesucht ist eine Kathete: Quadrate subtrahieren (Hypotenuse² − Kathete²), dann die Wurzel ziehen.';
-const TRIP=[[3,4,5],[6,8,10],[9,12,15],[12,16,20],[15,20,25],[5,12,13],[8,15,17],[7,24,25]];
+const TRIP4=[[3,4,5],[6,8,10],[9,12,15],[12,16,20],[15,20,25],[5,12,13],[8,15,17],[7,24,25]];
+const TRIP5=[[20,21,29],[9,40,41],[10,24,26],[18,24,30],[11,60,61],[12,35,37],[13,84,85],[16,30,34],[14,48,50],[21,28,35],[24,32,40],[27,36,45],[15,36,39],[28,45,53],[33,56,65],[36,77,85],[39,80,89],[48,55,73],[65,72,97],[16,63,65]];
+function tripTask(lv,pool,qText){
+  const T=pick(pool),v=Math.random()<.5?[T[1],T[0],T[2]]:T.slice(),n=letters(3),miss=Math.random()<.5?2:rnd(0,1);
+  return{lv,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans:v[miss],
+    q:qText(n[miss]),hint:numHint(miss),way:way(n,v,miss,v[miss],true)};
+}
 function t4(){
-  const T=pick(TRIP),v=Math.random()<.5?[T[1],T[0],T[2]]:T.slice(),n=letters(3),miss=Math.random()<.5?2:rnd(0,1);
-  return{lv:4,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans:v[miss],
-    q:`Berechne die Seite <b>${n[miss]}</b> im Kopf.`,hint:numHint(miss),way:way(n,v,miss,v[miss],true)};
+  return tripTask(4,TRIP4,m=>`Berechne die Seite <b>${m}</b> im Kopf.`);
 }
 function t5(){
+  return tripTask(5,TRIP5,m=>`Berechne die Seite <b>${m}</b> mit dem Taschenrechner (ganzzahliges Ergebnis).`);
+}
+function t6(){
   const odd=()=>rnd(2,17)*2+1,n=letters(3),dp=rnd(1,2),miss=Math.random()<.5?2:rnd(0,1);
   let v,ex;
   for(;;){
@@ -156,16 +163,16 @@ function t5(){
     v=miss===0?[0,a,h]:[a,0,h];break;
   }
   const ans=Number(ex.toFixed(dp));
-  return{lv:5,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans,
+  return{lv:6,type:'num',P:geom(),names:n.map((x,k)=>k===miss?`${x} = ?`:`${x} = ${v[k]}`),ans,
     q:`Berechne die Seite <b>${n[miss]}</b> und runde auf <b>${dp} Dezimalstelle${dp>1?'n':''}</b>.`,hint:numHint(miss),way:way(n,v,miss,ans,false)};
 }
 
 /* ---------- Ablauf ---------- */
-function newTask(){S.task=[t1,t2,t3,t4,t5][S.level-1]();S.answered=false;render()}
+function newTask(){S.task=[t1,t2,t3,t4,t5,t6][S.level-1]();S.answered=false;render()}
 function render(){
   const t=S.task;
   $('#badge').textContent=`Stufe ${t.lv}: ${TITLES[t.lv-1]}`;
-  $('#tr').classList.toggle('hidden',t.lv!==5);
+  $('#tr').classList.toggle('hidden',t.lv<5);
   $('#q').innerHTML=t.q;
   $('#tri').innerHTML=t.P?drawTri(t.P,t.names,{click:t.type==='tap',cls:t.mark!=null?{[t.mark]:'stroke-amber-500'}:null}):'';
   $('#opts').innerHTML=(t.opts||[]).map((o,i)=>`<button data-i="${i}" class="${BTN}">${o}</button>`).join('');
@@ -178,7 +185,7 @@ function finish(ok){
   if(ok){S.score++;S.streak++;S.best=Math.max(S.best,S.streak);S.okRun++;S.badRun=0}else{S.streak=0;S.badRun++;S.okRun=0}
   let note='';
   if(S.mode==='adaptive'){
-    if(S.okRun>=4&&S.level<5){S.level++;S.okRun=0;note=`Stark – weiter mit Stufe ${S.level}!`}
+    if(S.okRun>=4&&S.level<6){S.level++;S.okRun=0;note=`Stark – weiter mit Stufe ${S.level}!`}
     else if(S.badRun>=2&&S.level>1){S.level--;S.badRun=0;note=`Kein Problem – wir festigen Stufe ${S.level}.`}
   }
   const t=S.task,fb=$('#fb');
@@ -189,19 +196,19 @@ function finish(ok){
     +(note?`<div class="mt-2 font-semibold">${note}</div>`:'');
   $('#next').classList.remove('hidden');
   ui();
-  $('#next').scrollIntoView({behavior:'smooth',block:'nearest'});
+  
 }
 function checkNum(){
   if(S.answered)return;
   const raw=$('#num').value.trim().replace(',','.'),v=Number(raw);
-  if(raw===''||isNaN(v)){$('#num').focus();return}
+  if(raw===''||isNaN(v)){$('#num').focus({preventScroll: true});return}
   $('#num').disabled=true;$('#check').disabled=true;
   finish(Math.abs(v-S.task.ans)<1e-6);
 }
 function ui(){
   const on='bg-white text-teal-700 shadow dark:bg-slate-900 dark:text-teal-300',off='text-slate-600 dark:text-slate-300';
   document.querySelectorAll('#modes button').forEach(b=>b.className='rounded-lg px-4 py-2 text-sm font-bold transition-colors '+(b.dataset.mode===S.mode?on:off));
-  $('#lvls').innerHTML=[1,2,3,4,5].map(n=>`<button data-l="${n}" title="${TITLES[n-1]}" ${S.mode==='adaptive'?'disabled':''} class="h-10 w-10 rounded-lg font-bold ${n===S.level?'bg-teal-600 text-white':'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'} ${S.mode==='manual'?'hover:ring-2 hover:ring-teal-500':''}">${n}</button>`).join('');
+  $('#lvls').innerHTML=[1,2,3,4,5,6].map(n=>`<button data-l="${n}" title="${TITLES[n-1]}" ${S.mode==='adaptive'?'disabled':''} class="h-10 w-10 rounded-lg font-bold ${n===S.level?'bg-teal-600 text-white':'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'} ${S.mode==='manual'?'hover:ring-2 hover:ring-teal-500':''}">${n}</button>`).join('');
   $('#modeinfo').textContent=S.mode==='adaptive'?'Die Stufe passt sich an: 3 richtige Antworten in Folge steigen auf, 2 Fehler in Folge senken sie.':'Wähle die Stufe selbst aus.';
   $('#sScore').textContent=`${S.score}/${S.total}`;$('#sStreak').textContent=S.streak;$('#sBest').textContent=S.best;$('#sLevel').textContent=S.level;
 }
