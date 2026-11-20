@@ -273,7 +273,8 @@ function targetResult(t) {
   const Rn = cf.a * cf.c, Rd = cf.b * cf.d, g = gcd(Rn, Rd), sp = t.ops[0].s * t.ops[1].s;
   return {s: sp, n: Rn / g, d: Rd / g};
 }
-function renderStep() {
+function renderStep(skipFocus) {
+  $("stepBox").hidden = false;
   if (S.mental) {
     const t = S.task;
     $("stepTitle").textContent = "Kopfrechnen – Endergebnis eintragen";
@@ -281,7 +282,7 @@ function renderStep() {
     $("stepIn").innerHTML = `<div class="answer">${finHTML(S.mix && t.level > 1)}</div>`;
     $("noCancel").hidden = true;
     $("fb").innerHTML = "";
-    const i = $("stepIn").querySelector("input"); if (i && !noFocus) i.focus({preventScroll: true});
+    const i = $("stepIn").querySelector("input"); if (i && !skipFocus) i.focus({preventScroll: true});
     return;
   }
   const st = S.steps[S.step];
@@ -290,9 +291,10 @@ function renderStep() {
   $("stepIn").innerHTML = `<div class="answer">${st.type === "frac" ? finHTML(st.whole) : finHTML(false) + `<span class="op">${st.op}</span>` + finHTML(false)}</div>`;
   $("noCancel").hidden = !st.cancel;
   $("fb").innerHTML = "";
-  const i = $("stepIn").querySelector("input"); if (i && !noFocus) i.focus({preventScroll: true});
+  const i = $("stepIn").querySelector("input"); if (i && !skipFocus) i.focus({preventScroll: true});
 }
 function newTask(noFocus) {
+  const skipFocus = noFocus === true;
   const pool = active();
   let t = null;
   for (let lv = S.level; lv >= 1 && !t; lv--) t = build(lv, pool);
@@ -309,7 +311,7 @@ function newTask(noFocus) {
       : "Dividiere. Bilde den Kehrwert, kürze vollständig und rechne aus:";
     $("expr").innerHTML = fmtOps(t.ops, t.div ? ":" : "·") + " = ?";
   }
-  renderChain(); renderStep();
+  renderChain(); renderStep(skipFocus);
   $("stepBox").hidden = false; $("next").hidden = true;
 }
 function advance(st, fs) {
