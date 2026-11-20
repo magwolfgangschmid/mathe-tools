@@ -14,6 +14,9 @@
 #tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
 #tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
 #tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
+.score-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem;margin-top:.4rem}
+.score-actions .btn{flex:0 0 auto;white-space:nowrap}
+#mentalBtn.is-active{background:var(--acc);color:#fff;border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -52,6 +55,7 @@
     <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
     <div class="card stat"><div class="mute xs">Fehlerfrei</div><div id="sRate" class="stat-value">0/0</div></div>
   </section>
+  <div class="score-actions"><button id="mentalBtn" type="button" class="btn btn-ghost small" aria-pressed="false">Kopfrechnen</button></div>
 
   <section class="card pad pad-lg stack" aria-label="Aufgabe">
     <div id="qMeta" class="mute small"></div>
@@ -90,7 +94,7 @@ const CATS = [
 // Auto-Modus: schrittweise Freischaltung
 const AUTO = [[2, 3], [4, 5, 10], [6, 7, 8, 9, 12], [14, 15, 16, 18, 20], [11, 13, 19, 21, 25]];
 const LV = ["Kürzen & Erweitern", "Multiplikation I", "Multiplikation II", "Dividieren"];
-const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, extMode: "force", mode: "manual", autoOpen: false, level: 1, thr: tb.threshold,
+const S = {pool: new Set([2, 3]), fmode: "auto", stage: 0, open: new Set(), help: false, flip: false, neg: false, mix: false, extMode: "auto", mental: false, mode: "manual", autoOpen: false, level: 1, thr: tb.threshold,
   score: 0, streak: 0, best: 0, right: 0, total: 0, run: 0, wrong: 0, task: null, steps: [], step: 0, errs: 0, done: false, chain: []};
 
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -260,7 +264,26 @@ function show(kind, html) { $("fb").innerHTML = `<div class="feedback feedback--
 function renderChain() {
   $("chain").innerHTML = S.chain.map(r => `<div class="chain-row"><b aria-hidden="true">✔</b><span>${r.label}:</span><span class="chain-expr">${r.expr}</span></div>`).join("");
 }
+function targetResult(t) {
+  if (t.level === 1) {
+    if (t.kind === "red") return {s: t.s, n: t.n0, d: t.d0};
+    return {s: t.s, n: t.n0 * t.f, d: t.d0 * t.f};
+  }
+  const cf = cancelForm({a: t.a, b: t.b, c: t.c, d: t.d});
+  const Rn = cf.a * cf.c, Rd = cf.b * cf.d, g = gcd(Rn, Rd), sp = t.ops[0].s * t.ops[1].s;
+  return {s: sp, n: Rn / g, d: Rd / g};
+}
 function renderStep() {
+  if (S.mental) {
+    const t = S.task;
+    $("stepTitle").textContent = "Kopfrechnen – Endergebnis eintragen";
+    $("stepHint").textContent = "Berechne das vollständig gekürzte Endergebnis direkt im Kopf" + (S.mix && t.level > 1 ? " (als Bruch oder gemischte Zahl)." : ".");
+    $("stepIn").innerHTML = `<div class="answer">${finHTML(S.mix && t.level > 1)}</div>`;
+    $("noCancel").hidden = true;
+    $("fb").innerHTML = "";
+    const i = $("stepIn").querySelector("input"); if (i && !noFocus) i.focus({preventScroll: true});
+    return;
+  }
   const st = S.steps[S.step];
   $("stepTitle").textContent = `Schritt ${S.step + 1} von ${S.steps.length}: ${st.title}`;
   $("stepHint").textContent = st.hint || "";
@@ -275,7 +298,7 @@ function newTask(noFocus) {
   for (let lv = S.level; lv >= 1 && !t; lv--) t = build(lv, pool);
   if (!t) { const k = pick(pool), d0 = pick(pool); t = {level: 1, kind: "red", s: 1, n0: 1, d0, n: k, d: d0 * k}; }
   const relax = t.level !== S.level;
-  S.task = t; S.steps = stepsOf(t); S.step = 0; S.errs = 0; S.done = false; S.chain = [];
+  S.task = t; S.steps = stepsOf(t); S.step = 0; S.errs = 0; S.done = false; S.chain = []; S.mentalUsed = S.mental;
   $("qMeta").textContent = `Stufe ${t.level}: ${LV[t.level - 1]}` + (relax ? ` · mit den aktiven Zahlen ist Stufe ${S.level} nicht möglich, bitte weitere Zahlen aktivieren` : "");
   if (t.level === 1) {
     $("prompt").textContent = t.kind === "red" ? "Kürze den Bruch vollständig:" : `Erweitere den Bruch mit ${t.f}:`;
@@ -297,8 +320,19 @@ function advance(st, fs) {
 }
 function check() {
   if (S.done) return;
-  const st = S.steps[S.step], fs = [...$("stepIn").querySelectorAll(".fin")].map(readFin), e = fs.find(f => f.err);
+  const fs = [...$("stepIn").querySelectorAll(".fin")].map(readFin), e = fs.find(f => f.err);
   if (e) return show("hint", e.err);
+  if (S.mental) {
+    const R = targetResult(S.task);
+    const r = finalCheck(fs[0], R);
+    if (r.k === "ok") {
+      S.chain.push({label: "Kopfrechnen", expr: fmt({s: fs[0].s, w: fs[0].w, n: fs[0].n, d: fs[0].d})});
+      renderChain();
+      return finish();
+    }
+    S.errs++; return show(r.k === "bad" ? "bad" : "hint", r.msg);
+  }
+  const st = S.steps[S.step];
   const r = st.check(fs);
   if (r.k === "ok") return advance(st, fs);
   S.errs++; show(r.k === "bad" ? "bad" : "hint", r.msg);
@@ -319,7 +353,9 @@ function finish() {
   S.done = true; S.total++;
   let msg = "", pts; const clean = S.errs === 0;
   if (clean) {
-    S.right++; S.streak++; S.best = Math.max(S.best, S.streak); pts = 10 + (S.level - 1) * 5 + Math.min(S.streak - 1, 5) * 2; S.run++; S.wrong = 0;
+    S.right++; S.streak++; S.best = Math.max(S.best, S.streak); pts = 10 + (S.level - 1) * 5 + Math.min(S.streak - 1, 5) * 2;
+    if (S.mentalUsed) { const mb = S.steps.length > 1 ? 4 : 2; pts += mb; msg += `+${mb} Extrapunkte (Kopfrechnen)! `; }
+    S.run++; S.wrong = 0;
     if (S.run >= S.thr) {
       S.run = 0;
       const cf = S.fmode === "auto" && S.stage < AUTO.length - 1, cl = S.mode === "adaptive" && S.level < 4;
@@ -385,6 +421,7 @@ function cfg() {
   $("lvls").innerHTML = LV.map((l, i) => `<button type="button" class="chip chip--left${S.level === i + 1 ? " is-active" : ""}" data-l="${i + 1}">Stufe ${i + 1}: ${l}</button>`).join("");
   $("manualBox").hidden = S.mode !== "manual";
   $("help").hidden = !S.help;
+  const mb = $("mentalBtn"); if (mb) { mb.classList.toggle("is-active", S.mental); mb.setAttribute("aria-pressed", S.mental); }
   stats();
 }
 $("helpList").innerHTML = [
@@ -437,6 +474,24 @@ new MutationObserver(() => syncAutoPanel()).observe(tb, {childList: true, subtre
 if (tb.shadowRoot) new MutationObserver(() => syncAutoPanel()).observe(tb.shadowRoot, {childList: true, subtree: true});
 $("stepIn").addEventListener("click", e => { const b = e.target.closest(".fin-sign"); if (b) { const m = b.dataset.s === "+"; b.dataset.s = m ? "-" : "+"; b.textContent = m ? M : "+"; } });
 $("stepIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+function toggleMental() {
+  S.mental = !S.mental;
+  const mb = $("mentalBtn"); mb.classList.toggle("is-active", S.mental); mb.setAttribute("aria-pressed", S.mental);
+  if (!S.done && S.task) {
+    if (S.mental) {
+      const untouched = S.chain.length === 0 && S.errs === 0;
+      S.mentalUsed = untouched;
+      renderStep();
+      if (!untouched) show("hint", "Kopfrechnen aktiviert (für diese bereits begonnene Aufgabe ohne Extrapunkte).");
+    } else {
+      S.mentalUsed = false;
+      S.step = 0; S.errs = 0; S.chain = [];
+      renderChain(); renderStep();
+      show("hint", "Kopfrechnen beendet – zurück zur Schritt-für-Schritt-Ansicht.");
+    }
+  }
+}
+$("mentalBtn").onclick = toggleMental;
 $("chk").onclick = check; $("noCancel").onclick = noCancel; $("show").onclick = solution; $("next").onclick = newTask;
 document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && !$("next").hidden && document.activeElement !== $("next")) newTask(); });
 
