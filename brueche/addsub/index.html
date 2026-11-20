@@ -148,7 +148,7 @@ function stepsHTML(q){
     const mw=Math.floor(Math.abs(N)/L),mr=Math.abs(N)%L,ms=N<0?M:'';
     h+=`<li><b>Ganze und Bruchteile getrennt (Weg B):</b> Ganze ${ts.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${x.w}`).join(' ')} = ${sn(W)} · Bruchteile ${ts.map((x,i)=>`${i||x.s<0?sg(x)+' ':''}${fr(x.n*(L/x.d),L)}`).join(' ')} = ${fr(sn(Z),L)}</li>`;
     h+=`<li><b>Gemischte Zahl ermitteln:</b> ${mr===0?`${ms}${mw}`:`<span class="mixed">${ms}${mw?`<b class="whole">${mw}</b>`:''}${fr(mr,L)}</span>`}</li>`;
-    if(q.seq.includes('to_imp'))h+=`<li><b>In unechten Bruch verwandelt:</b> ${fr(sn(N),L)}</li>`;
+    if(q.seq.includes('to_imp')){const rw=Math.floor(n/d),rr=n%d;h+=`<li><b>Als Plus-Aufgabe in unechten Bruch verwandelt:</b> ${rw>0&&rr>0?`${N<0?`${M}(`:''}${rw} + ${fr(rr,d)}${N<0?')':''}`:`${N<0?M:''}${rw}`} = ${fr(N<0?M+n:n,d)}</li>`;}
   }else{
     if(any)h+=`<li><b>Gemischte Zahlen umwandeln (Weg A):</b> ${ts.map((x,i)=>x.w?`${mixed(x.w,x.n,x.d)} = ${fr(imp[i].n,x.d)}`:'').filter(Boolean).join(' &nbsp; ')}</li>`;
     h+=`<li><b>Hauptnenner:</b> ${ts.every(x=>x.d===ts[0].d)?`Alle Nenner sind gleich, also bleibt der Nenner ${L}.`:L===Math.max(...ts.map(x=>x.d))?`Der größte Nenner ${L} ist ein Vielfaches der anderen, also ist ${L} der Hauptnenner.`:`kgV(${ts.map(x=>x.d).join(', ')}) = ${L}`}</li>`;
@@ -165,7 +165,7 @@ const TT={imp:'Gemischte Zahlen in unechte Brüche umwandeln (Ganze · Nenner + 
   frac:'Nur die Bruchteile auf den Hauptnenner erweitern – die Ganzen bleiben stehen.',
   ws:'Ganze Zahlen und Bruchteile getrennt zusammenfassen (Zwischenergebnis aus ganzer Zahl und Bruch).',
   wb_mix:'Gemischte Zahl fertig ermitteln: Ganze und Bruchteil zu einer gemischten Zahl (oder ganzen Zahl) zusammenfassen.',
-  to_imp:'Gemischte Zahl in einen unechten Bruch verwandeln.',
+  to_imp:'Als Plus-Aufgabe in einen unechten Bruch verwandeln (Ganze + Bruchteil).',
   common:'Auf gleichen Nenner bringen: Erweitere jeden Bruch auf den Hauptnenner.',
   sum:'Zähler addieren/subtrahieren: Bilde das Zwischenergebnis auf dem gemeinsamen Nenner (Zähler mit Vorzeichen).',
   reduce:'Ergebnis kürzen: Kürze den Bruch, wenn es geht – oder bestätige, dass er nicht kürzbar ist.'};
@@ -180,7 +180,7 @@ function chainHTML(k){
     frac:`<b>Bruchteile auf ${L}:</b> ${t(x=>mixed(x.w,x.n*(L/x.d),L))}`,
     ws:`<b>Zwischenergebnis (Ganze &amp; Bruchteil):</b> <span class="mixed">${W<0?M:''}${Math.abs(W)}</span> ${((W>=0&&Z>=0)||(W<=0&&Z<=0))?'+':(Z<0?M:'+')} ${fr(Math.abs(Z),L)}`,
     wb_mix:`<b>Gemischte Zahl:</b> ${mr===0?`${ms}${mw}`:`<span class="mixed">${ms}${mw?`<b class="whole">${mw}</b>`:''}${fr(mr,L)}</span>`}`,
-    to_imp:`<b>Unechter Bruch:</b> ${fr(sn(N),L)}`,
+    to_imp:(()=>{const rw=Math.floor(rn/rd),rr=rn%rd;return`<b>Unechter Bruch:</b> ${rw>0&&rr>0?`${N<0?`${M}(`:''}${rw} + ${fr(rr,rd)}${N<0?')':''}`:`${N<0?M:''}${rw}`} = ${fr(rs,rd)}`;})(),
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
     sum:q.seq.includes('ws')?`<b>Zu einem Bruch:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}`:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
     reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
@@ -235,6 +235,7 @@ function guide(){
   else if(k==='common')h=q.ts.map((x,i)=>pre(x,i)+fi()).join('');
   else if(k==='ws')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+sb('gsg2')+fi('Zähler','Nenner');
   else if(k==='wb_mix')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+fi('Zähler','Nenner');
+  else if(k==='to_imp'){const rw=Math.floor(q.rn/q.rd),rr=q.rn%q.rd;const plusStr=rw>0&&rr>0?`${q.N<0?`${M}(`:''}<b class="whole">${rw}</b> + ${fr(rr,q.rd)}${q.N<0?')':''}`:`${q.N<0?M:''}<b class="whole">${rw}</b>`;h=`${plusStr} = `+sb('gsg')+fi('Zähler','Nenner');}
   else h=sb('gsg')+fi();
   const same=k==='common'&&q.ts.every(x=>x.d===q.ts[0].d)&&!q.ts.some(x=>x.w);
   gb.innerHTML=h+'<button class="btn btn-primary" id="gchk">Prüfen</button>'+(k==='reduce'?'<button class="btn btn-ghost" id="gno">Nicht kürzbar</button>':'')+(same?'<button class="btn btn-ghost" id="gtake">Nenner sind schon gleich – übernehmen</button>':'');
@@ -263,9 +264,9 @@ function gcheck(none){
   const a=v.map(Number),{ts,N,L}=q;
   if(k==='to_imp'){
     if(!a[1])return hint('Der Nenner darf nicht 0 sein.');
-    const val=q.gs*a[0],d=a[1];
-    if(d===L&&val===N)return adv();
-    if(val*L===N*d)return miss(`Der Wert stimmt, aber verwende den gemeinsamen Nenner ${L}.`,1);
+    const val=q.gs*a[0],d=a[1],targetN=q.N<0?-q.rn:q.rn;
+    if(d===q.rd&&val===targetN)return adv();
+    if(val*q.rd===targetN*d)return miss(`Der Wert stimmt, aber bleib beim gekürzten Nenner ${q.rd}.`,1);
     return miss('Das ist nicht der passende unechte Bruch: Ganze · Nenner + Zähler (mit Vorzeichen).',1);
   }
   if(k==='imp'){
