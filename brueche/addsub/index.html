@@ -69,10 +69,10 @@
 </div>
 
 <script>
-const BL=[2,3,5,7,4,6],PRO=[11,13,17,19],SUB={4:'2²',6:'2·3'},BASIS=[2,3,5];
+const BL=[2,3,4,5,6,10,8,7],PRO=[11,13,17,19],SUB={4:'2²',6:'2·3',8:'2³'},BASIS=[2,3,5];
 const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner','ein Nenner ist ein Vielfaches des anderen','Hauptnenner im Kopf bestimmbar','Nebenrechnung nötig'];
 // Auto-Modus: Reihenfolge der Freischaltungen (B = Nennerbaustein, L = Stufe)
-const LAD=[['L',2],['B',4],['L',3],['B',7],['B',6],['L',4],['B',11],['B',13],['B',17],['B',19]];
+const LAD=[['L',2],['B',4],['L',3],['B',6],['B',10],['B',8],['B',7],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
 const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
