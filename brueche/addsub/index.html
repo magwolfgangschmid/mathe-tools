@@ -270,4 +270,224 @@ function guide(noFocus){
   [['gsg','gs'],['gsg2','g2']].forEach(([id,p])=>{const b=$(id);if(b)b.onclick=()=>{q[p]=-q[p];b.textContent=q[p]<0?M:'+';};});
   if($('gno'))$('gno').onclick=()=>gcheck(true);
   if($('gtake'))$('gtake').onclick=()=>adv();
-  if(!noFocus)gb.querySelector('input').focus({preventScroll:true})
+  if(!noFocus)gb.querySelector('input').focus({preventScroll:true});
+}
+function gcheck(none){
+  const q=S.q,k=q.seq&&q.seq[q.st];if(S.done||!k||q.awaitImpChoice)return;
+  if(k==='reduce'&&none===true)return q.g===1?adv():miss('Doch, es lässt sich noch kürzen: Zähler und Nenner haben noch einen gemeinsamen Teiler.');
+  const v=[...$('gb').querySelectorAll('input')].map(i=>i.value.trim());
+  if(k==='wb_mix'||(k==='reduce'&&q.seq.includes('ws'))){
+    if(!/^\d*$/.test(v.join('')))return hint('Bitte nur Ziffern eintragen.');
+    const w=v[0]?+v[0]:0,z=v[1]?+v[1]:0,d=v[2]?+v[2]:1;
+    if(!v[0]&&!v[1])return hint('Gib eine ganze Zahl und/oder einen Bruch an.');
+    if(v[1]&&!v[2])return hint('Gib zum Zähler auch den Nenner an.');
+    if(v[2]&&!d)return hint('Der Nenner darf nicht 0 sein.');
+    if(v[1]&&z>=d)return hint(w>0?'Der Bruchteil der gemischten Zahl muss kleiner als 1 sein.':'Schreibe das Ergebnis als gemischte Zahl (oder ganze Zahl), nicht als unechten Bruch.',1);
+    const val=q.gs*(w*d+z),targetN=q.N<0?-q.rn:q.rn;
+    if(k==='wb_mix'){
+      if(val*q.L===q.N*d)return adv();
+      return miss('Das ergibt nicht denselben Wert wie das Zwischenergebnis. Achte auf Vorzeichen und Bruchteil.',1);
+    }
+    if(val*q.rd!==targetN*d)return miss(Math.abs(val)*q.rd===Math.abs(targetN)*d?'Der Betrag stimmt, aber das Vorzeichen nicht.':'Beim Kürzen darf sich der Wert nicht ändern: Teile Zähler und Nenner durch dieselbe Zahl.');
+    if(d===q.rd&&(z===0||gcd(z,d)===1))return adv();
+    return miss(d>q.L?'Du sollst kürzen, nicht erweitern.':gcd(z,d)>1||d!==q.rd?'Der Bruchteil ist noch nicht vollständig gekürzt – geht es noch weiter?':'Der Wert stimmt, aber kürze den Bruchteil vollständig.',1);
+  }
+  if(v.some(s=>!/^\d+$/.test(s)))return hint('Bitte in alle Felder nur Ziffern eintragen (bei ganzen Zahlen: Nenner 1).');
+  const a=v.map(Number),{ts,N,L}=q;
+  if(k==='to_imp'){
+    if(!a[1])return hint('Der Nenner darf nicht 0 sein.');
+    const val=q.gs*a[0],d=a[1],targetN=q.N<0?-q.rn:q.rn;
+    if(d===q.rd&&val===targetN)return adv();
+    if(val*q.rd===targetN*d)return miss(`Der Wert stimmt, aber bleib beim gekürzten Nenner ${q.rd}.`,1);
+    return miss('Das ist nicht der passende unechte Bruch: Ganze · Nenner + Zähler (mit Vorzeichen).',1);
+  }
+  if(k==='imp'){
+    const m=ts.filter(x=>x.w);
+    for(let j=0;j<m.length;j++){const x=m[j];
+      if(a[2*j+1]!==x.d)return miss('Beim Umwandeln bleibt der Nenner gleich.');
+      if(a[2*j]!==x.w*x.d+x.n)return miss(`Der Zähler stimmt nicht: Ganze · Nenner + Zähler, hier ${x.w} · ${x.d} + ${x.n}.`);}
+    return adv();
+  }
+  if(k==='common'||k==='frac'){
+    const ds=a.filter((_,i)=>i%2),ns=a.filter((_,i)=>!(i%2)),ex=x=>(k==='frac'?x.n:x.w*x.d+x.n)*(L/x.d);
+    if(ds.includes(0))return hint('Ein Nenner darf nicht 0 sein.');
+    if(new Set(ds).size>1)return miss('Alle Nenner müssen gleich sein – dafür erweiterst du die Brüche.');
+    if(ds[0]!==L)return miss(ds[0]%L===0?'Das ist ein gemeinsamer Nenner, aber nicht der kleinste. Suche den Hauptnenner (kgV).':'Das ist noch kein gemeinsamer Nenner: Nicht bei jedem Bruch geht der alte Nenner darin auf.',1);
+    const b=ts.findIndex((x,i)=>ns[i]!==ex(x));
+    if(b>=0){const x=ts[b];return miss(`Der Zähler von Bruch ${b+1} stimmt nicht. ${x.w&&k==='common'&&!q.seq.includes('imp')?'Wandle die gemischte Zahl erst in einen unechten Bruch um. ':''}Erweiterungsfaktor: ${L/x.d}.`);}
+    return adv();
+  }
+  if(k==='ws'){
+    const W=ts.reduce((s,x)=>s+x.s*x.w,0),Z=ts.reduce((s,x)=>s+x.s*x.n*(L/x.d),0);
+    if(a[2]!==L)return miss(`Der Nenner bleibt der Hauptnenner ${L}.`);
+    if(q.gs*a[0]!==W)return miss('Die Ganzen stimmen nicht: Rechne Ganze mit Ganzen, mit Vorzeichen.');
+    if(q.g2*a[1]!==Z)return miss('Die Zähler stimmen nicht: Addiere bzw. subtrahiere die erweiterten Zähler, mit Vorzeichen.');
+    return adv();
+  }
+  const val=q.gs*a[0],d=a[1];
+  if(!d)return hint('Der Nenner darf nicht 0 sein.');
+  if(k==='sum'){
+    if(d===L&&val===N)return adv();
+    if(val*L===N*d){
+      if(d>L)return miss(`Der Wert stimmt, aber bleib beim Hauptnenner ${L}.`,1);
+      const full=d===q.rd;   // vorzeitig gekürzt: kein Fehler, sondern Lob
+      addChain(q.st,0,'direkt gekürzt');q.st++;
+      if(full){addChain(q.st,0,'schon gekürzt');q.st++;}
+      q.se=0;guide();return hint('Clever gelöst – direkt gekürzt!'+(full?'':' Geht es noch weiter?'),2);
+    }
+    if(d!==L)return miss(`Beim Addieren und Subtrahieren bleibt der Nenner gleich: ${L}.`);
+    return miss(Math.abs(val)===Math.abs(N)?'Der Betrag stimmt, aber das Vorzeichen nicht: Achte auf Plus und Minus vor den Brüchen.':'Der Zähler stimmt nicht: Addiere bzw. subtrahiere die erweiterten Zähler, wie es die Vorzeichen vorgeben.');
+  }
+  if(val*L!==N*d)return miss(Math.abs(val)*L===Math.abs(N)*d?'Der Betrag stimmt, aber das Vorzeichen nicht.':'Beim Kürzen darf sich der Wert nicht ändern: Teile Zähler und Nenner durch dieselbe Zahl.');
+  if(d===q.rd)return adv();
+  return miss(d>L?'Du sollst kürzen, nicht erweitern.':d===L?'Der Bruch ist noch nicht gekürzt – Zähler und Nenner haben noch einen gemeinsamen Teiler.':'Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt – geht es noch weiter?',1);
+}
+
+/* ---------- Aufgabe, Prüfung, Auswertung ---------- */
+function newQ(noFocus){
+  const q=S.q=make(wantRed());S.done=false;S.sign=1;
+  const hasMix=q.ts.some(x=>x.w);
+  q.gd=S.level>=GUIDED_AB||(S.level===1&&hasMix);q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
+  q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
+  q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
+  q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
+  q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
+  q.seq=hasMix?null:['common','sum','reduce'];   // null = Wegwahl A/B (auch auf Stufe 1)
+  $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
+  $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
+  ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
+  $('sg').textContent='+';$('hint').textContent='';
+  ['fb','steps','rw','next','guide'].forEach(i=>$(i).classList.add('hidden'));
+  $('ans').classList.toggle('hidden',q.gd||hasMix);
+  if(q.gd||hasMix)guide(noFocus);else if(!noFocus)$('iw').focus({preventScroll:true});
+}
+function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
+  if(S.done)return;const q=S.q;
+  const wr=$('iw').value.trim().replace('−','-'),z=$('iz').value.trim(),n=$('in').value.trim();
+  if(/[-−]/.test(z+n))return hint('Das Minus steht nur vor der ganzen Zahl (Knopf oder Feld „ganz“), nicht im Zähler oder Nenner.');
+  const m=wr.match(/^(-?)(\d*)$/);
+  if(!m||!/^\d*$/.test(z+n))return hint('Bitte nur Ziffern eingeben (ein Minus nur im Feld „ganz“).');
+  const w=m[2];
+  if(m[1]&&S.sign<0)return hint('Das Minus nur einmal angeben: mit dem Knopf oder im Feld „ganz“.');
+  const sg=m[1]||S.sign<0?-1:1,zero=z!==''&&+z===0;
+  if(!zero&&((z&&!n)||(!z&&n)))return hint('Gib Zähler und Nenner an.');
+  if(!z&&!w)return hint('Trage eine Zahl ein.');
+  if(z&&!zero&&+n===0)return hint('Der Nenner darf nicht 0 sein.');
+  const W=+w||0,Z=zero?0:+z,D=z&&!zero?+n:1,val=sg*(W*D+Z),ok=val*q.L===q.N*D;
+  if(ok&&Z>0){
+    if(W>0&&Z>=D)return hint('Der Bruchteil muss kleiner als 1 sein – rechne ganze Zahlen zu den Ganzen.',true);
+    if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
+    if(W===0&&Z>=D&&(S.mix||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
+  }
+  if(q.gd&&!ok){q.err++;q.se++;
+    if(q.se>=3)return finish(false);
+    return hint('Das ist nicht derselbe Wert. Teile den Zähler durch den Nenner: Der Quotient ist die ganze Zahl, der Rest der neue Zähler.');}
+  $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
+}
+function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
+  const q=S.q;S.done=true;S.total++;let msg='';
+  if(q.gd&&!q.seq.includes('ws')&&(q.mx||bonus))addChain(q.seq.length,!fin);
+  const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
+  if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
+    if(bonus){S.score++;msg=q.impBonus?'+1 Bonuspunkt: Super, auch in einen unechten Bruch verwandelt! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
+    if(S.mode==='adaptive'){S.cnt++;
+      if(S.cnt>=S.thr){
+        if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
+        else{S.cnt=S.thr;msg+='Alle Bausteine und Stufen freigeschaltet – stark!';}}}
+  }else{S.streak=0;S.wrong++;
+    if(S.mode==='adaptive'&&S.wrong>=2&&S.ai>0){S.ai--;S.cnt=0;S.wrong=0;applyAuto();msg='Zwei Fehler in Folge: ein Schritt zurück.';}}
+  ['iw','iz','in'].forEach(i=>$(i).disabled=true);$('sg').disabled=true;$('chk').disabled=true;$('guide').classList.add('hidden');
+  const part=fin&&q.gd&&!ok,fb=$('fb');fb.className='feedback feedback--'+(ok?'ok':part?'hint':'bad');
+  const res=q.opt?(q.N<0?M:'')+fr(q.rn,q.rd)+' = '+resHTML(q.N,q.L):resHTML(q.N,q.L);
+  fb.innerHTML=`<div class="fb-title">${ok?'✔ Richtig!':part?'Gelöst – aber mit Fehlversuchen, das zählt nicht als richtig.':'✘ Leider falsch.'}</div><div class="fb-result">Ergebnis: <span class="expr expr--sm">${res}</span></div>`+(msg?`<p class="fb-note">${msg}</p>`:'');
+  if(!q.gd){$('steps').innerHTML=stepsHTML(q);$('rw').textContent='Rechenweg anzeigen';$('rw').classList.remove('hidden');}
+  $('next').classList.remove('hidden');$('next').focus();
+  cfg();
+}
+function autoInfo(){
+  const act=[...S.bl].sort((a,b)=>a-b).join(', ');
+  if(S.ai>=LAD.length)return `Alles freigeschaltet · aktive Bausteine: ${act} · Stufe ${S.level}`;
+  return `Aktive Bausteine: ${act} · Stufe ${S.level} · ${S.cnt}/${S.thr} bis ${LAD[S.ai][0]==='B'?'zum nächsten Baustein':'zur nächsten Stufe'}`;
+}
+function stats(){
+  try{localStorage.setItem('bz',JSON.stringify({s:S.score,b:S.best,r:S.right,t:S.total}))}catch(e){}
+  $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
+  const auto=S.mode==='adaptive';
+  tb.setProgress(auto?S.cnt:0,auto?autoInfo():'');
+  syncAutoPanel();
+}
+function cfg(){
+  const auto=S.mode==='adaptive';
+  const chip=(d,on,pro,sub)=>`<button class="chip${pro?' chip--pro':''}${on?' is-active':''}" aria-pressed="${on}" data-b="${d}">${d}${sub?`<small>${sub}</small>`:''}</button>`;
+  $('bl').innerHTML=BL.map(d=>chip(d,S.bl.has(d),false,SUB[d]||'')).join('')+PRO.map(d=>chip(d,S.bl.has(d),true,'Profi')).join('');
+  $('bl').querySelectorAll('button').forEach(b=>{b.disabled=auto;b.onclick=()=>{const d=+b.dataset.b;
+    if(S.bl.has(d)){if(S.bl.size>1)S.bl.delete(d);}else S.bl.add(d);S.seen=[];cfg();if(!S.done)newQ();};});
+  $('bnote').textContent=auto?'Auto-Modus: Die Bausteine werden nach und nach automatisch freigeschaltet.':'Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.';
+  const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['impIn','Unechte Brüche'],['subOnly','Nur Subtrahieren'],['three','3 Summanden']];
+  $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' is-active':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
+  $('tg').querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();};
+    b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1);
+  });
+  $('manualBox').classList.toggle('hidden',S.mode!=='manual');
+  $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' is-active':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
+  $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
+  stats();
+}
+function syncAutoPanel(){
+  const show=S.mode==='adaptive'&&S.autoOpen;
+  const roots=[tb.shadowRoot,tb].filter(Boolean);
+  roots.forEach(r=>{
+    r.querySelectorAll('input[type="range"],[class*="slider"],[class*="range"],[class*="info"],[class*="desc"],[class*="text"],[class*="progress"]').forEach(el=>{
+      if(el.tagName==='INPUT'&&el.type==='range'){
+        const box=el.closest('label,.row,.field,.slider-row,.tb-row,div')||el;
+        if(box!==r&&box!==tb)box.style.display=show?'':'none';
+        el.style.display=show?'':'none';
+      }else if(!el.querySelector('button')&&el.tagName!=='BUTTON'){
+        el.style.display=show?'':'none';
+      }
+    });
+  });
+}
+function setMode(m){
+  if(m==='adaptive'&&S.mode==='adaptive'){S.autoOpen=!S.autoOpen;syncAutoPanel();return;}
+  const sx=window.scrollX,sy=window.scrollY;
+  S.mode=m;if(m!=='adaptive')S.autoOpen=false;
+  S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ(true);
+  const restore=()=>window.scrollTo({left:sx,top:sy,behavior:'instant'});
+  restore();
+  requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);});
+  setTimeout(restore,0);
+}
+tb.addEventListener('modechange',e=>setMode(e.detail.mode));
+tb.addEventListener('click',e=>{
+  const btn=e.target.closest('button');
+  if(!btn)return;
+  const txt=(btn.textContent||'').trim().toLowerCase();
+  if((txt==='auto'||btn.dataset.mode==='adaptive')&&S.mode==='adaptive'){
+    S.autoOpen=!S.autoOpen;syncAutoPanel();
+  }
+},true);
+tb.addEventListener('thresholdchange',e=>{S.thr=e.detail.value;stats();});
+new MutationObserver(()=>syncAutoPanel()).observe(tb,{childList:true,subtree:true});
+if(tb.shadowRoot)new MutationObserver(()=>syncAutoPanel()).observe(tb.shadowRoot,{childList:true,subtree:true});
+$('sg').onclick=()=>{S.sign=-S.sign;$('sg').textContent=S.sign<0?M:'+';};
+$('chk').onclick=check;
+$('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textContent=h?'Rechenweg anzeigen':'Rechenweg ausblenden';};
+$('next').onclick=newQ;
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
+  if(S.done)newQ();else if(S.q.gd&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
+function resetScore(){
+  S.score=0;S.streak=0;S.best=0;S.right=0;S.total=0;S.cnt=0;S.wrong=0;
+  try{localStorage.removeItem('bz');}catch(e){}
+  stats();
+}
+$('resetScore').onclick=resetScore;
+try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
+S.thr=tb.threshold;
+window.addEventListener('resize',()=>$('tg').querySelectorAll('button').forEach(b=>b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1)));
+cfg();newQ();
+</script>
+</body>
+</html>
+
