@@ -5,29 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Brüche addieren &amp; subtrahieren</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
 
 <!-- Zentrales Design (GitHub Pages, Unterordner) -->
-<link rel="stylesheet" href="../../shared/style.css">
-<script src="../../shared/components.js"></script>
+<link rel="stylesheet" href="../../shared/style.css?v=2026-11-20">
+<script src="../../shared/components.js?v=2026-11-20"></script>
 <style>
-/* App-spezifisch: geführter Rechenweg */
-.chain{display:grid;gap:.4rem}
-.chain:empty{display:none}
-.chain-step{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;background:var(--soft);border-radius:var(--radius-sm);padding:.5rem .75rem;font-size:.95rem}
-.chain-step .tag{color:var(--ok);font-weight:800}
-.guide{display:grid;justify-items:center;gap:.6rem;border:1.5px dashed var(--acc);border-radius:var(--radius-sm);padding:.75rem}
-.guide-title{font-weight:600;font-size:.95rem;text-align:center}
-.chip.is-active:disabled{opacity:1}
-.hint.is-ok{color:var(--ok)}
-.chip--pro{min-width:0;width:auto;flex:0 0 auto;padding-inline:.55rem;white-space:nowrap}
-.chip--pro small{font-weight:400;letter-spacing:0;font-size:.7em;line-height:1}
-#tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
-#tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
-#tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
-.score-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem}
-.score-actions .btn{flex:0 0 auto;white-space:nowrap}
-#mentalBtn.is-active{background:var(--acc);color:#fff;border-color:var(--acc)}
+/* App-spezifisch (alles Übrige liegt in shared/style.css) */
+#bl .chip--pro{min-width:0;width:auto;flex:0 0 auto;padding-inline:.55rem;white-space:nowrap}
+#bl .chip--pro small{font-weight:400;letter-spacing:0;font-size:.7em;line-height:1}
 </style>
 </head>
 <body>
@@ -35,7 +22,7 @@
 
 <div class="app">
 
-<app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="5" label-adaptive="Auto" slider-text="Nächster Baustein bzw. nächste Stufe nach {n} richtigen Aufgaben"></app-mode-toolbar>
+<app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="5" label-adaptive="Auto" collapsible-auto slider-text="Nächster Baustein bzw. nächste Stufe nach {n} richtigen Aufgaben"></app-mode-toolbar>
 
 <section class="card pad stack">
   <div>
@@ -45,7 +32,7 @@
   </div>
   <div>
     <h2>Zusatz-Schalter</h2>
-    <div id="tg" class="row"></div>
+    <div id="tg" class="row switch-grid"></div>
   </div>
   <div id="manualBox"><h2>Stufe</h2><div id="lvls" class="grid-2"></div></div>
 </section>
@@ -83,7 +70,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',6],['B',10],['B',8],['B',7],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,impIn:false,subOnly:false,mental:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,impIn:false,subOnly:false,mental:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -256,7 +243,7 @@ function guide(noFocus){
     if(q.opt)$('gdone').onclick=()=>finish(true);
     $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
   }
-  q.gs=1;q.g2=1;
+  $('ans').classList.add('hidden');q.gs=1;q.g2=1;
   $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':(k==='reduce'&&q.seq.includes('ws')?'Gemischte Zahl kürzen: Kürze den Bruchteil, wenn es geht – oder bestätige, dass er nicht kürzbar ist.':TT[k]));
   const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
   let h;
@@ -284,6 +271,7 @@ function gcheck(none){
     const w=v[0]?+v[0]:0,z=v[1]?+v[1]:0,d=v[2]?+v[2]:1;
     if(!v[0]&&!v[1])return hint('Gib eine ganze Zahl und/oder einen Bruch an.');
     if(v[1]&&!v[2])return hint('Gib zum Zähler auch den Nenner an.');
+    if(!v[1]&&v[2])return hint('Gib zum Nenner auch den Zähler an (oder lass beide Felder leer).');
     if(v[2]&&!d)return hint('Der Nenner darf nicht 0 sein.');
     if(v[1]&&z>=d)return hint(w>0?'Der Bruchteil der gemischten Zahl muss kleiner als 1 sein.':'Schreibe das Ergebnis als gemischte Zahl (oder ganze Zahl), nicht als unechten Bruch.',1);
     const val=q.gs*(w*d+z),targetN=q.N<0?-q.rn:q.rn;
@@ -353,12 +341,13 @@ function metaText(q){
   return `Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(S.mental?' · Kopfrechnen':guided?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
 }
 function newQ(noFocus){
+  noFocus=noFocus===true;   // nur ein ausdrückliches true unterdrückt den Fokus (nicht ein Click-Event)
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
   const hasMix=q.ts.some(x=>x.w);
   const allSameDen=!hasMix&&q.ts.every(x=>x.d===q.ts[0].d);
   q.gd=true;q.mentalUsed=S.mental;q.earlyReduce=false;q.earlyFull=false;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
   q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
-  q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
+  q.imp=q.rd>1&&q.rn>q.rd;               // unechter Bruch als Ergebnis (ganze Zahlen zählen nicht)
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
   q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
   q.seq=hasMix?null:(allSameDen?['sum','reduce']:['common','sum','reduce']);
@@ -426,9 +415,8 @@ function stats(){
   $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
   const auto=S.mode==='adaptive';
   tb.setProgress(auto?S.cnt:0,auto?autoInfo():'');
-  syncAutoPanel();
 }
-function cfg(){
+function renderCfg(){
   const auto=S.mode==='adaptive';
   const chip=(d,on,pro,sub)=>`<button class="chip${pro?' chip--pro':''}${on?' is-active':''}" aria-pressed="${on}" data-b="${d}">${d}${sub?`<small>${sub}</small>`:''}</button>`;
   $('bl').innerHTML=BL.map(d=>chip(d,S.bl.has(d),false,SUB[d]||'')).join('')+PRO.map(d=>chip(d,S.bl.has(d),true,'Profi')).join('');
@@ -437,58 +425,29 @@ function cfg(){
   $('bnote').textContent=auto?'Auto-Modus: Die Bausteine werden nach und nach automatisch freigeschaltet.':'Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.';
   const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['impIn','Unechte Brüche'],['subOnly','Nur Subtrahieren'],['three','3 Summanden']];
   $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' is-active':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
-  $('tg').querySelectorAll('button').forEach(b=>{
-    b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();};
-    b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1);
-  });
+  $('tg').querySelectorAll('button').forEach(b=>{b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();};});
+  MathPortal.ui.fade($('tg'));
   $('manualBox').classList.toggle('hidden',S.mode!=='manual');
   $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' is-active':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
   $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
   const mb=$('mentalBtn');if(mb){mb.classList.toggle('is-active',S.mental);mb.setAttribute('aria-pressed',S.mental);}
   stats();
 }
-function syncAutoPanel(){
-  const show=S.mode==='adaptive'&&S.autoOpen;
-  const roots=[tb.shadowRoot,tb].filter(Boolean);
-  roots.forEach(r=>{
-    r.querySelectorAll('input[type="range"],[class*="slider"],[class*="range"],[class*="info"],[class*="desc"],[class*="text"],[class*="progress"]').forEach(el=>{
-      if(el.tagName==='INPUT'&&el.type==='range'){
-        const box=el.closest('label,.row,.field,.slider-row,.tb-row,div')||el;
-        if(box!==r&&box!==tb)box.style.display=show?'':'none';
-        el.style.display=show?'':'none';
-      }else if(!el.querySelector('button')&&el.tagName!=='BUTTON'){
-        el.style.display=show?'':'none';
-      }
-    });
+function cfg(){MathPortal.ui.keepFocus(renderCfg);}
+function setMode(m){
+  MathPortal.ui.keepScroll(()=>{
+    S.mode=m;S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ(true);
   });
 }
-function setMode(m){
-  if(m==='adaptive'&&S.mode==='adaptive'){S.autoOpen=!S.autoOpen;syncAutoPanel();return;}
-  const sx=window.scrollX,sy=window.scrollY;
-  S.mode=m;if(m!=='adaptive')S.autoOpen=false;
-  S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ(true);
-  const restore=()=>window.scrollTo({left:sx,top:sy,behavior:'instant'});
-  restore();
-  requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);});
-  setTimeout(restore,0);
-}
 tb.addEventListener('modechange',e=>setMode(e.detail.mode));
-tb.addEventListener('click',e=>{
-  const btn=e.target.closest('button');
-  if(!btn)return;
-  const txt=(btn.textContent||'').trim().toLowerCase();
-  if((txt==='auto'||btn.dataset.mode==='adaptive')&&S.mode==='adaptive'){
-    S.autoOpen=!S.autoOpen;syncAutoPanel();
-  }
-},true);
 tb.addEventListener('thresholdchange',e=>{S.thr=e.detail.value;stats();});
-new MutationObserver(()=>syncAutoPanel()).observe(tb,{childList:true,subtree:true});
-if(tb.shadowRoot)new MutationObserver(()=>syncAutoPanel()).observe(tb.shadowRoot,{childList:true,subtree:true});
 $('sg').onclick=()=>{S.sign=-S.sign;$('sg').textContent=S.sign<0?M:'+';};
 $('chk').onclick=check;
 $('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textContent=h?'Rechenweg anzeigen':'Rechenweg ausblenden';};
-$('next').onclick=newQ;
-document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
+$('next').onclick=()=>newQ();
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.repeat||e.isComposing)return;
+  if(MathPortal.ui.isControl(e.target))return;   // Enter auf einem Knopf löst diesen selbst aus
+  e.preventDefault();
   if(S.done)newQ();else if(S.q.gd&&!S.mental&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
 function resetScore(){
   S.score=0;S.streak=0;S.best=0;S.right=0;S.total=0;S.cnt=0;S.wrong=0;
@@ -507,6 +466,8 @@ function toggleMental(){
     const allSameDen=!hasMix&&q.ts.every(x=>x.d===q.ts[0].d);
     if(q.gd||hasMix){
       q.err=0;q.se=0;q.st=0;q.seq=hasMix?null:(allSameDen?['sum','reduce']:['common','sum','reduce']);
+      q.awaitImpChoice=false;q.impBonus=false;q.earlyReduce=false;q.earlyFull=false;q.gs=1;q.g2=1;
+      ['iw','iz','in'].forEach(i=>$(i).value='');S.sign=1;$('sg').textContent='+';$('ans').classList.add('hidden');
       $('chain').innerHTML='';
       guide();
       hint('Kopfrechnen beendet – hier ist die Schritt-für-Schritt-Hilfe zur gleichen Aufgabe.',1);
@@ -525,7 +486,7 @@ $('mentalBtn').onclick=toggleMental;
 $('resetScore').onclick=resetScore;
 try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
 S.thr=tb.threshold;
-window.addEventListener('resize',()=>$('tg').querySelectorAll('button').forEach(b=>b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1)));
+MathPortal.ui.watchFade($('tg'));
 cfg();newQ();
 </script>
 </body>
