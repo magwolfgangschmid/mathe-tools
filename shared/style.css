@@ -81,6 +81,28 @@
   --pro: #3a4a52;
 }
 
+/* Sunset-Mode: warme Abenddämmerung, Bernstein- und Kupfer-Akzente */
+:root.sunset,
+:root[data-theme="sunset"] {
+  --bg: #24191c;
+  --grid: #3b272c;
+  --card: #2f2024;
+  --ink: #faece6;
+  --mute: #d4b4aa;
+  --line: #54383f;
+  --soft: #3d282e;
+
+  --acc: #f48c42;
+  --acc-fg: #24120c;
+
+  --ok: #8be0a6;   --ok-bg: #1d3f2e;
+  --bad: #ff9c8a;  --bad-bg: #4d2224;
+  --warn: #ffbe55; --warn-bg: #473218;
+
+  --pro: #4a353b;
+  --pro-on: #c86d51;
+  --pro-on-fg: #fff7f4;
+}
 
 /* ---------- 2. Reset & Typografie ---------- */
 
@@ -392,7 +414,9 @@ app-mode-toolbar { display: grid; gap: .75rem; }
 .big--flex { display: flex; align-items: center; justify-content: center; gap: 1rem; }
 
 /* Periode: Überstrich in Warnfarbe */
-.per { text-decoration: overline; text-decoration-thickness: .12em; color: var(--warn); font-weight: 700; }
+.per { text-decoration: overline; text-decoration-thickness: .12em; text-underline-offset: 0; color: var(--warn); font-weight: 700; }
+/* Warme Perioden-Variante (aus umrechnung.txt inspiriert) */
+.per--sunset { text-decoration: overline; text-decoration-thickness: .12em; text-underline-offset: 0; color: var(--acc); font-weight: 700; }
 
 /* Eingaben */
 .input--fill { flex: 1 1 0; width: 0; min-width: 0; font-size: 1.5rem; text-align: left; padding: .45rem .7rem; }
