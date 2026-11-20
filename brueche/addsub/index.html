@@ -77,7 +77,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',6],['B',10],['B',8],['B',7],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -391,6 +391,7 @@ function stats(){
   $('sScore').textContent=S.score;$('sStreak').textContent=S.streak;$('sBest').textContent=`(${S.best})`;$('sRate').textContent=`${S.right}/${S.total}`;
   const auto=S.mode==='adaptive';
   tb.setProgress(auto?S.cnt:0,auto?autoInfo():'');
+  syncAutoPanel();
 }
 function cfg(){
   const auto=S.mode==='adaptive';
@@ -407,9 +408,38 @@ function cfg(){
   $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
   stats();
 }
-function setMode(m){S.mode=m;S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ();}
+function syncAutoPanel(){
+  const show=S.mode==='adaptive'&&S.autoOpen;
+  const roots=[tb.shadowRoot,tb].filter(Boolean);
+  roots.forEach(r=>{
+    r.querySelectorAll('input[type="range"],[class*="slider"],[class*="range"],[class*="info"],[class*="desc"],[class*="text"],[class*="progress"]').forEach(el=>{
+      if(el.tagName==='INPUT'&&el.type==='range'){
+        const box=el.closest('label,.row,.field,.slider-row,.tb-row,div')||el;
+        if(box!==r&&box!==tb)box.style.display=show?'':'none';
+        el.style.display=show?'':'none';
+      }else if(!el.querySelector('button')&&el.tagName!=='BUTTON'){
+        el.style.display=show?'':'none';
+      }
+    });
+  });
+}
+function setMode(m){
+  if(m==='adaptive'&&S.mode==='adaptive'){S.autoOpen=!S.autoOpen;syncAutoPanel();return;}
+  S.mode=m;if(m!=='adaptive')S.autoOpen=false;
+  S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ();
+}
 tb.addEventListener('modechange',e=>setMode(e.detail.mode));
+tb.addEventListener('click',e=>{
+  const btn=e.target.closest('button');
+  if(!btn)return;
+  const txt=(btn.textContent||'').trim().toLowerCase();
+  if((txt==='auto'||btn.dataset.mode==='adaptive')&&S.mode==='adaptive'){
+    S.autoOpen=!S.autoOpen;syncAutoPanel();
+  }
+},true);
 tb.addEventListener('thresholdchange',e=>{S.thr=e.detail.value;stats();});
+new MutationObserver(()=>syncAutoPanel()).observe(tb,{childList:true,subtree:true});
+if(tb.shadowRoot)new MutationObserver(()=>syncAutoPanel()).observe(tb.shadowRoot,{childList:true,subtree:true});
 $('sg').onclick=()=>{S.sign=-S.sign;$('sg').textContent=S.sign<0?M:'+';};
 $('chk').onclick=check;
 $('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textContent=h?'Rechenweg anzeigen':'Rechenweg ausblenden';};
