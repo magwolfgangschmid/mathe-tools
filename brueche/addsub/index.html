@@ -25,6 +25,9 @@
 #tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
 #tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
 #tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
+.score-actions{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:.5rem}
+.score-actions .btn{flex:0 0 auto;white-space:nowrap}
+#mentalBtn.is-active{background:var(--acc);color:#fff;border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -52,7 +55,7 @@
   <div class="card stat"><div class="mute xs">Serie (Bestwert)</div><div class="stat-value"><span id="sStreak">0</span> <span id="sBest" class="mute small">(0)</span></div></div>
   <div class="card stat"><div class="mute xs">Richtig</div><div id="sRate" class="stat-value">0/0</div></div>
 </section>
-<div class="row" style="justify-content:flex-end"><button id="resetScore" type="button" class="btn btn-ghost small">Punkte zurücksetzen</button></div>
+<div class="score-actions"><button id="mentalBtn" type="button" class="btn btn-ghost small" aria-pressed="false">Kopfrechnen</button><button id="resetScore" type="button" class="btn btn-ghost small">Punkte zurücksetzen</button></div>
 
 <section class="card pad pad-lg stack" aria-live="polite">
   <div id="qMeta" class="mute small"></div>
@@ -80,7 +83,7 @@ const LV=['Gleichnamig','Vielfaches','Kopf-Bereich','Profi'],LD=['gleiche Nenner
 const LAD=[['L',2],['B',4],['L',3],['B',6],['B',10],['B',8],['B',7],['L',4],['B',11],['B',13],['B',17],['B',19]];
 const GUIDED_AB=2;       // geführte Schritte ab dieser Stufe
 const FEHLER_ERLAUBT=0;  // Fehlversuche, ab denen eine geführte Aufgabe nicht als „richtig“ zählt
-const S={bl:new Set(BASIS),neg:false,mix:false,three:false,impIn:false,subOnly:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
+const S={bl:new Set(BASIS),neg:false,mix:false,three:false,impIn:false,subOnly:false,mental:false,mode:'adaptive',autoOpen:false,level:1,thr:5,score:0,streak:0,best:0,right:0,total:0,cnt:0,ai:0,wrong:0,bag:[],seen:[],q:null,done:false,sign:1};
 const $=id=>document.getElementById(id);
 const tb=$('tb');
 const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[rnd(0,a.length-1)];
@@ -344,22 +347,27 @@ function gcheck(none){
 }
 
 /* ---------- Aufgabe, Prüfung, Auswertung ---------- */
+function metaText(q){
+  const guided=q.gd&&!S.mental;
+  return `Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(S.mental?' · Kopfrechnen':guided?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
+}
 function newQ(noFocus){
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
   const hasMix=q.ts.some(x=>x.w);
-  q.gd=S.level>=GUIDED_AB||(S.level===1&&hasMix);q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
+  q.gd=S.level>=GUIDED_AB||(S.level===1&&hasMix);q.mentalUsed=S.mental;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
   q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
   q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
   q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
   q.seq=hasMix?null:['common','sum','reduce'];   // null = Wegwahl A/B (auch auf Stufe 1)
-  $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
+  $('qMeta').textContent=metaText(q);
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
   ['iw','iz','in'].forEach(i=>{$(i).value='';$(i).disabled=false});$('sg').disabled=false;$('chk').disabled=false;
   $('sg').textContent='+';$('hint').textContent='';
   ['fb','steps','rw','next','guide'].forEach(i=>$(i).classList.add('hidden'));
-  $('ans').classList.toggle('hidden',q.gd||hasMix);
-  if(q.gd||hasMix)guide(noFocus);else if(!noFocus)$('iw').focus({preventScroll:true});
+  const direct=S.mental||(!q.gd&&!hasMix);
+  $('ans').classList.toggle('hidden',!direct);
+  if(!direct)guide(noFocus);else if(!noFocus)$('iw').focus({preventScroll:true});
 }
 function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(S.done)return;const q=S.q;
@@ -379,17 +387,18 @@ function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
     if(gcd(Z,D)!==1)return hint('Der Wert stimmt, aber der Bruch ist noch nicht vollständig gekürzt.',true);
     if(W===0&&Z>=D&&(S.mix||D===1))return hint('Der Wert stimmt, aber wandle den unechten Bruch noch in eine gemischte Zahl (oder eine ganze Zahl) um!',true);
   }
-  if(q.gd&&!ok){q.err++;q.se++;
+  if(q.gd&&!S.mental&&!ok){q.err++;q.se++;
     if(q.se>=3)return finish(false);
     return hint('Das ist nicht derselbe Wert. Teile den Zähler durch den Nenner: Der Quotient ist die ganze Zahl, der Rest der neue Zähler.');}
   $('hint').textContent='';finish(ok,ok&&q.opt&&W>0&&Z>0);
 }
 function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben bzw. alle Schritte geschafft)
-  const q=S.q;S.done=true;S.total++;let msg='';
-  if(q.gd&&!q.seq.includes('ws')&&(q.mx||bonus))addChain(q.seq.length,!fin);
-  const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
+  const q=S.q,guidedRun=q.gd&&!S.mental;S.done=true;S.total++;let msg='';
+  if(guidedRun&&q.seq&&!q.seq.includes('ws')&&(q.mx||bonus))addChain(q.seq.length,!fin);
+  const ok=fin&&(!guidedRun||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
-    if(bonus){S.score++;msg=q.impBonus?'+1 Bonuspunkt: Super, auch in einen unechten Bruch verwandelt! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
+    if(q.mentalUsed){const mb=q.gd?4:2;S.score+=mb;msg+=`+${mb} Extrapunkte (Kopfrechnen)! `;}
+    if(bonus){S.score++;msg+=q.impBonus?'+1 Bonuspunkt: Super, auch in einen unechten Bruch verwandelt! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
     if(S.mode==='adaptive'){S.cnt++;
       if(S.cnt>=S.thr){
         if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
@@ -400,7 +409,7 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
   const part=fin&&q.gd&&!ok,fb=$('fb');fb.className='feedback feedback--'+(ok?'ok':part?'hint':'bad');
   const res=q.opt?(q.N<0?M:'')+fr(q.rn,q.rd)+' = '+resHTML(q.N,q.L):resHTML(q.N,q.L);
   fb.innerHTML=`<div class="fb-title">${ok?'✔ Richtig!':part?'Gelöst – aber mit Fehlversuchen, das zählt nicht als richtig.':'✘ Leider falsch.'}</div><div class="fb-result">Ergebnis: <span class="expr expr--sm">${res}</span></div>`+(msg?`<p class="fb-note">${msg}</p>`:'');
-  if(!q.gd){$('steps').innerHTML=stepsHTML(q);$('rw').textContent='Rechenweg anzeigen';$('rw').classList.remove('hidden');}
+  if(!guidedRun){$('steps').innerHTML=stepsHTML(q);$('rw').textContent='Rechenweg anzeigen';$('rw').classList.remove('hidden');}
   $('next').classList.remove('hidden');$('next').focus();
   cfg();
 }
@@ -432,6 +441,7 @@ function cfg(){
   $('manualBox').classList.toggle('hidden',S.mode!=='manual');
   $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' is-active':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
   $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
+  const mb=$('mentalBtn');if(mb){mb.classList.toggle('is-active',S.mental);mb.setAttribute('aria-pressed',S.mental);}
   stats();
 }
 function syncAutoPanel(){
@@ -476,12 +486,38 @@ $('chk').onclick=check;
 $('rw').onclick=()=>{const h=$('steps').classList.toggle('hidden');$('rw').textContent=h?'Rechenweg anzeigen':'Rechenweg ausblenden';};
 $('next').onclick=newQ;
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
-  if(S.done)newQ();else if(S.q.gd&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
+  if(S.done)newQ();else if(S.q.gd&&!S.mental&&!(S.q.seq&&!S.q.seq[S.q.st]))gcheck();else check();});
 function resetScore(){
   S.score=0;S.streak=0;S.best=0;S.right=0;S.total=0;S.cnt=0;S.wrong=0;
   try{localStorage.removeItem('bz');}catch(e){}
   stats();
 }
+function toggleMental(){
+  S.mental=!S.mental;
+  const mb=$('mentalBtn');mb.classList.toggle('is-active',S.mental);mb.setAttribute('aria-pressed',S.mental);
+  const q=S.q;if(!q||S.done)return;
+  if(!S.mental){
+    q.mentalUsed=false;
+    $('qMeta').textContent=metaText(q);
+    $('hint').textContent='';
+    const hasMix=q.ts.some(x=>x.w);
+    if(q.gd||hasMix){
+      q.err=0;q.se=0;q.st=0;q.seq=hasMix?null:['common','sum','reduce'];
+      $('chain').innerHTML='';
+      guide();
+      hint('Kopfrechnen beendet – hier ist die Schritt-für-Schritt-Hilfe zur gleichen Aufgabe.',1);
+    }
+  }else{
+    const untouched=$('chain').children.length===0&&q.err===0;
+    q.mentalUsed=untouched;
+    $('qMeta').textContent=metaText(q);
+    $('guide').classList.add('hidden');
+    $('ans').classList.remove('hidden');
+    $('iw').focus({preventScroll:true});
+    if(!untouched)hint('Kopfrechnen aktiviert (für diese bereits begonnene Aufgabe ohne Extrapunkte).',1);
+  }
+}
+$('mentalBtn').onclick=toggleMental;
 $('resetScore').onclick=resetScore;
 try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
 S.thr=tb.threshold;
@@ -490,4 +526,3 @@ cfg();newQ();
 </script>
 </body>
 </html>
-
