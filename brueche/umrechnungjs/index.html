@@ -17,7 +17,7 @@
 
 <main class="app">
 
-  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="3" label-adaptive="Adaptive Challenge"></app-mode-toolbar>
+  <app-mode-toolbar id="tb" show-tabs="false" show-mode="true" show-slider="true" mode="adaptive" threshold="3" label-adaptive="Auto" collapsible-auto></app-mode-toolbar>
 
   <section class="card pad stack" aria-label="Einstellungen">
     <div>
@@ -171,7 +171,8 @@ function equal(p, n, d) {
   return num * BigInt(d) === BigInt(n) * den;
 }
 
-function gen() {
+function gen(noFocus) {
+  const skipFocus = noFocus === true;
   let cat, lv;
   if (S.mode === "ad") { lv = S.lv; cat = lv < 3 ? pick(["fin", "pure"]) : pick(["mixed", "mixed", "fin", "pure"]); }
   else { cat = S.mode === "all" ? pick(["fin", "pure", "mixed"]) : S.mode; lv = S.sel; }
@@ -188,12 +189,12 @@ function gen() {
   $("task").innerHTML = dir === "A" ? fracH(n, d) + "<span>=</span><span class=\"mute\">?</span>" : `<span>${fmtH(S.task.x)}</span><span>=</span>${fracH("?", "?")}`;
   $("prompt").textContent = dir === "A" ? "Wandle den Bruch in eine Dezimalzahl um:" : "Wandle die Dezimalzahl in einen Bruch um:";
   $("decIn").hidden = dir === "B"; $("fracIn").hidden = dir === "A";
-  $("badge").textContent = (S.mode === "ad" ? `Adaptive Challenge · Stufe ${lv}` : S.mode === "all" ? `Alle gemischt · Stufe ${lv}` : `${CATS[cat]} · Stufe ${lv}`) + (dir === "A" ? " · Bruch → Dezimal" : " · Dezimal → Bruch");
+  $("badge").textContent = (S.mode === "ad" ? `Auto · Stufe ${lv}` : S.mode === "all" ? `Alle gemischt · Stufe ${lv}` : `${CATS[cat]} · Stufe ${lv}`) + (dir === "A" ? " · Bruch → Dezimal" : " · Dezimal → Bruch");
   $("count").textContent = `Aufgabe ${S.tot + 1}`;
   $("ans").value = ""; $("ans").disabled = false; $("num").value = ""; $("den").value = ""; $("num").disabled = false; $("den").disabled = false;
   $("prev").innerHTML = ""; $("fb").innerHTML = "";
   $("check").hidden = false; $("skip").hidden = false; $("next").hidden = true;
-  (dir === "A" ? $("ans") : $("num")).focus();
+  if (!skipFocus) (dir === "A" ? $("ans") : $("num")).focus({preventScroll: true});
 }
 
 function explain(t) {
@@ -255,7 +256,7 @@ function check() {
   $("fb").innerHTML = `<div class="feedback feedback--${right ? "ok" : "bad"}"><p class="fb-title">${title}</p>${note}
     ${right ? "" : "<p>Richtig ist:</p>"}${solution(t)}<details ${right ? "" : "open"}><summary class="summary">Lösungsweg</summary>${explain(t)}</details></div>`;
   $("ans").disabled = true; $("check").hidden = true; $("skip").hidden = true; $("next").hidden = false;
-  $("next").focus();
+  $("next").focus({preventScroll: true});
   stats();
 }
 
@@ -299,7 +300,7 @@ function checkB() {
   note += record(right, t.cat);
   $("fb").innerHTML = `<div class="feedback feedback--${right ? "ok" : "bad"}"><p class="fb-title">${right ? "Richtig!" : val ? "Fast!" : "Nicht ganz."}</p>${note}${right ? "" : "<p>Richtig ist:</p>"}${solB(t)}<details ${right ? "" : "open"}><summary class="summary">Lösungsweg</summary>${explainB(t)}</details></div>`;
   $("num").disabled = true; $("den").disabled = true; $("check").hidden = true; $("skip").hidden = true; $("next").hidden = false;
-  $("next").focus();
+  $("next").focus({preventScroll: true});
   stats();
 }
 function stats() {
@@ -316,7 +317,10 @@ function stats() {
   tb.setProgress(S.mode === "ad" ? S.run : 0, `Stufe ${S.lv}: ${S.run} von ${S.thr} richtigen Antworten in Folge. Zwei Fehler in Folge: eine Stufe zurück.`);
 }
 
-function setMode(m) { S.mode = m; S.run = 0; S.bad = 0; ui(); stats(); gen(); }
+function setMode(m) {
+  const run = () => { S.mode = m; S.run = 0; S.bad = 0; ui(); stats(); gen(true); };
+  window.MathPortal && MathPortal.ui && MathPortal.ui.keepScroll ? MathPortal.ui.keepScroll(run) : run();
+}
 function press(el, on) { el.setAttribute("aria-pressed", on); el.classList.toggle("is-active", on); }
 function ui() {
   document.querySelectorAll("[data-mode]").forEach(b => press(b, b.dataset.mode === S.mode));
@@ -330,7 +334,7 @@ function insert(txt, back) {
   const a = i.selectionStart ?? i.value.length, b = i.selectionEnd ?? a;
   i.value = i.value.slice(0, a) + txt + i.value.slice(b);
   const c = a + txt.length - (back || 0);
-  i.focus(); i.setSelectionRange(c, c); preview();
+  i.focus({preventScroll: true}); i.setSelectionRange(c, c); preview();
 }
 function preview() {
   const raw = $("ans").value, p = parse(raw);
@@ -339,7 +343,10 @@ function preview() {
 
 // Toolbar: adaptiv ↔ manuell (Kategorie), Schwellenregler
 tb.addEventListener("modechange", e => setMode(e.detail.mode === "adaptive" ? "ad" : S.cat));
-tb.addEventListener("thresholdchange", e => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); ui(); stats(); });
+tb.addEventListener("thresholdchange", e => {
+  const run = () => { S.thr = e.detail.value; S.run = Math.min(S.run, S.thr - 1); ui(); stats(); };
+  window.MathPortal && MathPortal.ui && MathPortal.ui.keepScroll ? MathPortal.ui.keepScroll(run) : run();
+});
 
 $("modes").addEventListener("click", e => { const b = e.target.closest("[data-mode]"); if (b) { S.cat = b.dataset.mode; setMode(S.cat); } });
 $("lvls").addEventListener("click", e => { const b = e.target.closest("[data-lv]"); if (b) { S.sel = +b.dataset.lv; ui(); gen(); } });
@@ -352,7 +359,7 @@ $("ans").addEventListener("input", preview);
 $("ans").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); S.done ? gen() : check(); } });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && S.done && document.activeElement === document.body) gen(); });
 $("dirs").addEventListener("click", e => { const b = e.target.closest("[data-dir]"); if (b) { S.dir = b.dataset.dir; ui(); gen(); } });
-$("num").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("den").focus(); } });
+$("num").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("den").focus({preventScroll: true}); } });
 $("den").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); S.done ? gen() : check(); } });
 
 ui(); stats(); gen();
