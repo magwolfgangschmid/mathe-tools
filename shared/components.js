@@ -358,7 +358,7 @@
       }
     },
     // Enter soll fokussierte Bedienelemente selbst auslösen (nicht global abfangen)
-    isControl(t) { return !!(t && t.closest && t.closest('button,a,summary,select,textarea,[role="tab"]')); }
+    isControl(t) { return !!(t && t.closest && t.closest('button,a,summary,select,textarea,input,[role="tab"]')); }
   };
 
   // Kleine API für eigene Skripte: MathPortal.theme.get() / .set('dark') / .toggle(), MathPortal.ui.*
