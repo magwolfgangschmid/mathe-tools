@@ -204,7 +204,7 @@ function adv(rev){const q=S.q;addChain(q.st,rev);
   q.st++;q.se=0;guide();}
 function miss(m,w){const q=S.q;q.err++;q.se++;
   if(q.se>=3){adv(true);hint('Nach drei Fehlversuchen wurde die Lösung dieses Schritts übernommen.',1);}else hint(m,w);}
-function guide(){
+function guide(noFocus){
   const q=S.q,g=$('guide'),gb=$('gb');$('hint').textContent='';g.classList.remove('hidden');
   if(!q.seq){   // Wegwahl bei gemischten Zahlen in der Angabe
     $('ans').classList.add('hidden');
@@ -247,7 +247,7 @@ function guide(){
   [['gsg','gs'],['gsg2','g2']].forEach(([id,p])=>{const b=$(id);if(b)b.onclick=()=>{q[p]=-q[p];b.textContent=q[p]<0?M:'+';};});
   if($('gno'))$('gno').onclick=()=>gcheck(true);
   if($('gtake'))$('gtake').onclick=()=>adv();
-  gb.querySelector('input').focus({preventScroll:true});
+  if(!noFocus)gb.querySelector('input').focus({preventScroll:true});
 }
 function gcheck(none){
   const q=S.q,k=q.seq&&q.seq[q.st];if(S.done||!k||q.awaitImpChoice)return;
@@ -321,7 +321,7 @@ function gcheck(none){
 }
 
 /* ---------- Aufgabe, Prüfung, Auswertung ---------- */
-function newQ(){
+function newQ(noFocus){
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
   const hasMix=q.ts.some(x=>x.w);
   q.gd=S.level>=GUIDED_AB||(S.level===1&&hasMix);q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
@@ -336,7 +336,7 @@ function newQ(){
   $('sg').textContent='+';$('hint').textContent='';
   ['fb','steps','rw','next','guide'].forEach(i=>$(i).classList.add('hidden'));
   $('ans').classList.toggle('hidden',q.gd||hasMix);
-  if(q.gd||hasMix)guide();else $('iw').focus({preventScroll:true});
+  if(q.gd||hasMix)guide(noFocus);else if(!noFocus)$('iw').focus({preventScroll:true});
 }
 function check(){   // Endantwort: Stufe 1 komplett, ab Stufe 2 nur Schritt 4
   if(S.done)return;const q=S.q;
@@ -425,8 +425,13 @@ function syncAutoPanel(){
 }
 function setMode(m){
   if(m==='adaptive'&&S.mode==='adaptive'){S.autoOpen=!S.autoOpen;syncAutoPanel();return;}
+  const sx=window.scrollX,sy=window.scrollY;
   S.mode=m;if(m!=='adaptive')S.autoOpen=false;
-  S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ();
+  S.cnt=0;S.wrong=0;S.seen=[];if(m==='adaptive'){S.ai=0;applyAuto();}cfg();newQ(true);
+  const restore=()=>window.scrollTo({left:sx,top:sy,behavior:'instant'});
+  restore();
+  requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);});
+  setTimeout(restore,0);
 }
 tb.addEventListener('modechange',e=>setMode(e.detail.mode));
 tb.addEventListener('click',e=>{
