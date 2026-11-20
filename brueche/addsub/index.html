@@ -215,8 +215,8 @@ function guide(){
       hint(`Gewählt: ${label} – trage das Endergebnis unten ein.`,2);
       $('iw').focus({preventScroll:true});
     };
-    $('wa').onclick=()=>{q.seq=['imp','common','sum','reduce'];afterPick('Weg A (unechte Brüche)');};
-    $('wb').onclick=()=>{q.seq=['frac','ws','wb_mix','reduce'];afterPick('Weg B (Ganze und Bruchteile getrennt)');};
+    $('wa').onclick=()=>{q.seq=S.level===1?['imp','sum','reduce']:['imp','common','sum','reduce'];afterPick('Weg A (unechte Brüche)');};
+    $('wb').onclick=()=>{q.seq=S.level===1?['ws','wb_mix','reduce']:['frac','ws','wb_mix','reduce'];afterPick('Weg B (Ganze und Bruchteile getrennt)');};
     return;
   }
   const k=q.seq[q.st];
@@ -316,12 +316,12 @@ function gcheck(none){
 /* ---------- Aufgabe, Prüfung, Auswertung ---------- */
 function newQ(){
   const q=S.q=make(wantRed());S.done=false;S.sign=1;
-  q.gd=S.level>=GUIDED_AB;q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
+  const hasMix=q.ts.some(x=>x.w);
+  q.gd=S.level>=GUIDED_AB||(S.level===1&&hasMix);q.err=0;q.se=0;q.st=0;q.gs=1;q.g2=1;
   q.g=gcd(Math.abs(q.N),q.L);q.rn=Math.abs(q.N)/q.g;q.rd=q.L/q.g;
   q.imp=q.rn>q.rd;                       // unechter Bruch als Ergebnis
   q.opt=q.imp&&!S.mix;                   // gemischte Zahl optional (+1 Bonuspunkt)
   q.mx=q.rd===1||(q.imp&&S.mix);         // gemischte/ganze Zahl Pflicht
-  const hasMix=q.ts.some(x=>x.w);
   q.seq=hasMix?null:['common','sum','reduce'];   // null = Wegwahl A/B (auch auf Stufe 1)
   $('qMeta').textContent=`Stufe ${S.level}: ${LD[S.level-1]}`+(S.three?' · 3 Summanden':'')+(q.gd?' · geführte Schritte':'')+(q.relax?' · mit diesen Bausteinen sind auf dieser Stufe nur einfachere Aufgaben möglich':'');
   $('expr').innerHTML=exprHTML(q.ts);$('chain').innerHTML='';
