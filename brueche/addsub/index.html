@@ -186,14 +186,15 @@ function chainHTML(k){
     reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
     mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`}[k];
 }
-function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed';
-  $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${note?` <small>(${note})</small>`:''}</div>`);}
+function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed',n2=note||(k==='to_imp'&&!rev?'+1 Bonuspunkt':'');
+  $('chain').insertAdjacentHTML('beforeend',`<div class="chain-step"><span class="tag">✔ Schritt ${i+1}</span>${chainHTML(k)}${rev?' <small>(Lösung angezeigt)</small>':''}${n2?` <small>(${n2})</small>`:''}</div>`);}
 function adv(rev){const q=S.q;addChain(q.st,rev);
-  if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'){
+  if(q.seq[q.st]==='to_imp'&&!rev)q.impBonus=true;
+  if(q.seq.includes('ws')&&q.seq[q.st]==='reduce'&&q.imp){
     q.se=0;q.awaitImpChoice=true;
     $('hint').textContent='';
-    $('gt').textContent=`Schritt ${q.st+1} erledigt – möchtest du die gemischte Zahl in einen unechten Bruch verwandeln?`;
-    $('gb').innerHTML='<button class="btn btn-primary" id="wimp">In unechten Bruch verwandeln</button><button class="btn btn-ghost" id="wskip">Fertig ohne Umwandeln</button>';
+    $('gt').textContent=`Schritt ${q.st+1} erledigt – gemischte Zahl noch als Plus-Aufgabe in einen unechten Bruch verwandeln (+1 Bonuspunkt)?`;
+    $('gb').innerHTML='<button class="btn btn-primary" id="wimp">In unechten Bruch verwandeln (+1 Bonuspunkt)</button><button class="btn btn-ghost" id="wskip">Fertig</button>';
     $('wimp').onclick=()=>{q.awaitImpChoice=false;q.seq.splice(q.st+1,0,'to_imp');q.st++;guide();};
     $('wskip').onclick=()=>{q.awaitImpChoice=false;q.st++;guide();};
     return;
@@ -220,7 +221,8 @@ function guide(){
   }
   const k=q.seq[q.st];
   if(!k){   // Endstufe: bei Weg B ist die gemischte Zahl (und ggf. Kürzen) bereits erledigt
-    if(q.seq.includes('ws')||(!q.mx&&!q.opt))return finish(true);
+    if(q.seq.includes('ws'))return finish(true,!!q.impBonus);
+    if(!q.mx&&!q.opt)return finish(true);
     $('gt').textContent=`Schritt ${q.seq.length+1} – `+(q.rd===1?'Ganze Zahl: Das Ergebnis ist eine ganze Zahl. Trage sie unten ein.':q.opt?'Optional (+1 Bonuspunkt): Schreibe das Ergebnis als gemischte Zahl – oder beende mit dem unechten Bruch. Das Minus steht vor der ganzen Zahl.':'Gemischte Zahl: Wandle den unechten Bruch um. Das Minus steht vor der ganzen Zahl.');
     gb.innerHTML=q.opt?'<button class="btn btn-ghost" id="gdone">Fertig – der unechte Bruch genügt</button>':'';
     if(q.opt)$('gdone').onclick=()=>finish(true);
@@ -357,7 +359,7 @@ function finish(fin,bonus){   // fin = Endergebnis erreicht (richtig eingegeben 
   if(q.gd&&(q.mx||bonus))addChain(q.seq.length,!fin);
   const ok=fin&&(!q.gd||q.err<=FEHLER_ERLAUBT);
   if(ok){S.right++;S.streak++;S.best=Math.max(S.best,S.streak);S.score+=10+(S.level-1)*5+Math.min(S.streak-1,5)*2;S.wrong=0;
-    if(bonus){S.score++;msg='+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
+    if(bonus){S.score++;msg=q.impBonus?'+1 Bonuspunkt: Super, auch in einen unechten Bruch verwandelt! ':'+1 Bonuspunkt: Super, als gemischte Zahl geschrieben! ';}
     if(S.mode==='adaptive'){S.cnt++;
       if(S.cnt>=S.thr){
         if(S.ai<LAD.length){const[t,v]=LAD[S.ai];S.ai++;S.cnt=0;applyAuto();msg+=t==='B'?`Neuer Nennerbaustein freigeschaltet: ${v}!`:`Aufstieg: weiter mit Stufe ${v}.`;}
