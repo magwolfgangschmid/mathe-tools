@@ -183,7 +183,7 @@ function chainHTML(k){
     to_imp:(()=>{const rw=Math.floor(rn/rd),rr=rn%rd;return`<b>Unechter Bruch:</b> ${rw>0&&rr>0?`${N<0?`${M}(`:''}${rw} + ${fr(rr,rd)}${N<0?')':''}`:`${N<0?M:''}${rw}`} = ${fr(rs,rd)}`;})(),
     common:`<b>Hauptnenner ${L}:</b> ${t(x=>fr(im(x),L))}`,
     sum:q.seq.includes('ws')?`<b>Zu einem Bruch:</b> ${sn(W)}·${L} + ${Z<0?'('+sn(Z)+')':Z} = ${sn(N)} → ${fr(sn(N),L)}`:`<b>Zähler zusammenfassen:</b> ${t(im)} = ${sn(N)} → ${fr(sn(N),L)}`,
-    reduce:g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`,
+    reduce:q.seq.includes('ws')?(g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${resHTML(N,L)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${resHTML(N,L)}`):(g>1?`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = ${g} → ${fr(rs,rd)}`:`<b>Kürzen:</b> ggT(${Math.abs(N)}, ${L}) = 1 → schon gekürzt: ${fr(rs,rd)}`),
     mixed:`<b>Als ${rd===1?'ganze':'gemischte'} Zahl:</b> ${fr(rs,rd)} = ${resHTML(N,L)}`}[k];
 }
 function addChain(i,rev,note){const q=S.q,k=q.seq[i]||'mixed',n2=note||(k==='to_imp'&&!rev?'+1 Bonuspunkt':'');
@@ -229,14 +229,14 @@ function guide(){
     $('ans').classList.remove('hidden');$('iw').focus({preventScroll:true});return;
   }
   q.gs=1;q.g2=1;
-  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':TT[k]);
+  $('gt').textContent=`Schritt ${q.st+1} – `+(k==='sum'&&q.seq.includes('ws')?'Zu einem Bruch zusammenfassen: Ganze · Hauptnenner + Zähler ergibt den Zähler des Ergebnisbruchs.':(k==='reduce'&&q.seq.includes('ws')?'Gemischte Zahl kürzen: Kürze den Bruchteil, wenn es geht – oder bestätige, dass er nicht kürzbar ist.':TT[k]));
   const pre=(x,i)=>i||x.s<0?`<b>${x.s<0?M:'+'}</b>`:'',sb=id=>`<button class="chip" id="${id}" aria-label="Vorzeichen wechseln">+</button>`;
   let h;
   if(k==='imp')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`${mixed(x.w,x.n,x.d)} = ${fi()}`:fr(x.n,x.d))).join('');
   else if(k==='frac')h=q.ts.map((x,i)=>pre(x,i)+(x.w?`<b class="whole">${x.w}</b>`:'')+fi()).join('');
   else if(k==='common')h=q.ts.map((x,i)=>pre(x,i)+fi()).join('');
   else if(k==='ws')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+sb('gsg2')+fi('Zähler','Nenner');
-  else if(k==='wb_mix')h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+fi('Zähler','Nenner');
+  else if(k==='wb_mix'||(k==='reduce'&&q.seq.includes('ws')))h=sb('gsg')+'<input class="input" inputmode="numeric" autocomplete="off" placeholder="ganz" aria-label="Ganze">'+fi('Zähler','Nenner');
   else if(k==='to_imp'){const rw=Math.floor(q.rn/q.rd),rr=q.rn%q.rd;const plusStr=rw>0&&rr>0?`${q.N<0?`${M}(`:''}<b class="whole">${rw}</b> + ${fr(rr,q.rd)}${q.N<0?')':''}`:`${q.N<0?M:''}<b class="whole">${rw}</b>`;h=`${plusStr} = `+sb('gsg')+fi('Zähler','Nenner');}
   else h=sb('gsg')+fi();
   const same=k==='common'&&q.ts.every(x=>x.d===q.ts[0].d)&&!q.ts.some(x=>x.w);
@@ -251,16 +251,21 @@ function gcheck(none){
   const q=S.q,k=q.seq&&q.seq[q.st];if(S.done||!k||q.awaitImpChoice)return;
   if(k==='reduce'&&none===true)return q.g===1?adv():miss('Doch, es lässt sich noch kürzen: Zähler und Nenner haben noch einen gemeinsamen Teiler.');
   const v=[...$('gb').querySelectorAll('input')].map(i=>i.value.trim());
-  if(k==='wb_mix'){
+  if(k==='wb_mix'||(k==='reduce'&&q.seq.includes('ws'))){
     if(!/^\d*$/.test(v.join('')))return hint('Bitte nur Ziffern eintragen.');
     const w=v[0]?+v[0]:0,z=v[1]?+v[1]:0,d=v[2]?+v[2]:1;
     if(!v[0]&&!v[1])return hint('Gib eine ganze Zahl und/oder einen Bruch an.');
     if(v[1]&&!v[2])return hint('Gib zum Zähler auch den Nenner an.');
     if(v[2]&&!d)return hint('Der Nenner darf nicht 0 sein.');
     if(w>0&&v[1]&&z>=d)return hint('Der Bruchteil der gemischten Zahl muss kleiner als 1 sein.',1);
-    const val=q.gs*(w*d+z);
-    if(val*q.L===q.N*d)return adv();
-    return miss('Das ergibt nicht denselben Wert wie das Zwischenergebnis. Achte auf Vorzeichen und Bruchteil.',1);
+    const val=q.gs*(w*d+z),targetN=q.N<0?-q.rn:q.rn;
+    if(k==='wb_mix'){
+      if(val*q.L===q.N*d)return adv();
+      return miss('Das ergibt nicht denselben Wert wie das Zwischenergebnis. Achte auf Vorzeichen und Bruchteil.',1);
+    }
+    if(val*q.rd!==targetN*d)return miss(Math.abs(val)*q.rd===Math.abs(targetN)*d?'Der Betrag stimmt, aber das Vorzeichen nicht.':'Beim Kürzen darf sich der Wert nicht ändern: Teile Zähler und Nenner durch dieselbe Zahl.');
+    if(d===q.rd&&(z===0||gcd(z,d)===1))return adv();
+    return miss(d>q.L?'Du sollst kürzen, nicht erweitern.':gcd(z,d)>1||d!==q.rd?'Der Bruchteil ist noch nicht vollständig gekürzt – geht es noch weiter?':'Der Wert stimmt, aber kürze den Bruchteil vollständig.',1);
   }
   if(v.some(s=>!/^\d+$/.test(s)))return hint('Bitte in alle Felder nur Ziffern eintragen (bei ganzen Zahlen: Nenner 1).');
   const a=v.map(Number),{ts,N,L}=q;
