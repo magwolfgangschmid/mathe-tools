@@ -22,6 +22,9 @@
 .hint.is-ok{color:var(--ok)}
 .chip--pro{min-width:0;width:auto;flex:0 0 auto;padding-inline:.55rem;white-space:nowrap}
 .chip--pro small{font-weight:400;letter-spacing:0;font-size:.7em;line-height:1}
+#tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(45%,155px),1fr));gap:.45rem}
+#tg .chip{min-width:0;width:100%;overflow:hidden;white-space:nowrap;padding-inline:.6rem}
+#tg .chip.is-fade{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.2rem),transparent)}
 </style>
 </head>
 <body>
@@ -422,7 +425,10 @@ function cfg(){
   $('bnote').textContent=auto?'Auto-Modus: Die Bausteine werden nach und nach automatisch freigeschaltet.':'Nenner entstehen aus ein bis zwei Bausteinen, z. B. 4·7 = 28 oder 6·5 = 30.';
   const T=[['neg','Negative Zahlen'],['mix','Gemischte Zahlen'],['impIn','Unechte Brüche'],['subOnly','Nur Subtrahieren'],['three','3 Summanden']];
   $('tg').innerHTML=T.map(([k,l])=>`<button class="chip${S[k]?' is-active':''}" aria-pressed="${S[k]}" data-t="${k}">${l}</button>`).join('');
-  $('tg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();});
+  $('tg').querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{S[b.dataset.t]=!S[b.dataset.t];S.seen=[];cfg();if(!S.done)newQ();};
+    b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1);
+  });
   $('manualBox').classList.toggle('hidden',S.mode!=='manual');
   $('lvls').innerHTML=LV.map((l,i)=>`<button class="chip${S.level===i+1?' is-active':''}" data-l="${i+1}">Stufe ${i+1}: ${l}</button>`).join('');
   $('lvls').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.level=+b.dataset.l;S.seen=[];cfg();newQ();});
@@ -479,6 +485,7 @@ function resetScore(){
 $('resetScore').onclick=resetScore;
 try{const o=JSON.parse(localStorage.getItem('bz')||'null');if(o){S.score=o.s|0;S.best=o.b|0;S.right=o.r|0;S.total=o.t|0;}}catch(e){}
 S.thr=tb.threshold;
+window.addEventListener('resize',()=>$('tg').querySelectorAll('button').forEach(b=>b.classList.toggle('is-fade',b.scrollWidth>b.clientWidth+1)));
 cfg();newQ();
 </script>
 </body>
