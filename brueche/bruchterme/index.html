@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bruchterme</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<script src="../../shared/components.js"></script>
+<style>
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .12em;line-height:1.15;font-size:.85em}
+.fr i{font-style:normal;padding:0 .2em}
+.fr i:first-child{border-bottom:.09em solid currentColor}
+.mx{display:inline-flex;align-items:center}
+.term{font-size:clamp(1.15rem,4.6vw,1.7rem);line-height:2.3;text-align:center}
+.steps{margin:.4em 0 0 1.2em;line-height:2}
+.option .k{opacity:.6;margin-right:.5em;font-size:.8em}
+</style>
+</head>
+<body>
+<main class="app">
+  <app-header title="Bruchterme"></app-header>
+  <app-mode-toolbar></app-mode-toolbar>
+
+  <section class="card pad-lg stack">
+    <div class="stats">
+      <div class="stat"><span>Punkte</span> <b id="sP">0</b></div>
+      <div class="stat"><span>Serie</span> <b id="sS">0</b></div>
+      <div class="stat"><span>Stufe</span> <b id="sL">1</b></div>
+      <div class="stat"><span>Richtig</span> <b id="sR">0/0</b></div>
+    </div>
+
+    <div class="stack" id="ctl">
+      <div class="row" id="lv" hidden></div>
+      <div class="row">
+        <label><input type="checkbox" id="cNeg" checked> Negative Zahlen</label>
+        <label><input type="checkbox" id="cMix" checked> Gemischte Zahlen</label>
+        <label><input type="checkbox" id="cKopf"> Kopfrechnen</label>
+      </div>
+    </div>
+
+    <div class="pill" id="info"></div>
+    <div id="prompt"></div>
+    <div class="term" id="term"></div>
+    <div class="options" id="opts"></div>
+    <div id="hint" class="feedback" hidden></div>
+    <div class="fb-slot" id="fb"></div>
+    <div class="row">
+      <button class="btn btn-ghost" id="hintBtn" type="button">kgV-Hilfe</button>
+      <button class="btn btn-primary btn-block" id="next" type="button" disabled>Weiter (Enter)</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+'use strict';
+const ui = (window.MathPortal && window.MathPortal.ui) || {};
+const keepScroll = ui.keepScroll || (f => f());
+const keepFocus = ui.keepFocus || (f => f());
+const isControl = ui.isControl || (el => !!el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName));
+const $ = id => document.getElementById(id);
+
+/* ---------- exakte Bruch-Arithmetik ---------- */
+const ab = Math.abs, rnd = n => Math.floor(Math.random() * n), pick = a => a[rnd(a.length)];
+const gcd = (a, b) => b ? gcd(b, a % b) : ab(a);
+const lcm = (a, b) => a / gcd(a, b) * b;
+const norm = (n, d) => { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d) || 1; return { n: n / g, d: d / g }; };
+const add = (a, b) => norm(a.n * b.d + b.n * a.d, a.d * b.d);
+const sub = (a, b) => norm(a.n * b.d - b.n * a.d, a.d * b.d);
+const mul = (a, b) => norm(a.n * b.n, a.d * b.d);
+const div = (a, b) => { if (b.n === 0) throw 0; return norm(a.n * b.d, a.d * b.n); };
+const eq = (a, b) => a.n * b.d === b.n * a.d;
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- Darstellung ---------- */
+const SYM = { '+': '+', '-': '−', '*': '·', ':': ':' };
+const sg = n => n < 0 ? '−' : '';
+const frH = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+const fh = f => f.d === 1 ? sg(f.n) + ab(f.n) : sg(f.n) + frH(ab(f.n), f.d);
+const fw = f => f.n < 0 ? '(' + fh(f) + ')' : fh(f);
+const mixH = l => `${sg(l.frac.n)}<span class="mx">${l.mix.w}${frH(l.mix.n, l.mix.d)}</span>`;
+const dispH = f => {
+  if (S.mixed && S.level >= 3 && f.d > 1 && ab(f.n) > f.d && ab(f.n) % f.d) {
+    return `${sg(f.n)}<span class="mx">${Math.floor(ab(f.n) / f.d)}${frH(ab(f.n) % f.d, f.d)}</span>`;
+  }
+  return fh(f);
+};
+function R(n, first) {
+  if (n.type === 'frac') {
+    const h = n.mix ? mixH(n) : fh(n.frac);
+    return n.frac.n < 0 && !first ? '(' + h + ')' : h;
+  }
+  const inner = R(n.left, n.paren ? true : first) + ' ' + SYM[n.op] + ' ' + R(n.right, false);
+  return n.paren ? (n.negParen ? '−' : '') + '(' + inner + ')' : inner;
+}
+
+/* ---------- Stufen ---------- */
+const LV = {
+  1: { k: 3, d: 5, l: 12 }, 2: { k: 3, d: 6, l: 18 }, 3: { k: 3, d: 8, l: 24 },
+  4: { k: 0, d: 9, l: 30 }, 5: { k: 4, d: 10, l: 36 }, 6: { k: 4, d: 12, l: 48 }
+};
+
+/* ---------- AST: Rechnen (optional mit Fehler 'err') und Schritte ---------- */
+function ev(nd, err, c) {
+  if (nd.type === 'frac') {
+    if (err === 'mixed' && nd.mix) { const m = nd.mix; return norm(nd.frac.n < 0 ? -(m.w + m.n) : m.w + m.n, m.d); }
+    return nd.frac;
+  }
+  let v;
+  const o = nd.op;
+  if (err === 'neg' && o === '-' && nd.right.type === 'op' && nd.right.paren && '+-'.includes(nd.right.op)) {
+    const l = ev(nd.left, err, c), a = ev(nd.right.left, err, c), b = ev(nd.right.right, err, c);
+    v = sub(l, a); v = nd.right.op === '+' ? add(v, b) : sub(v, b);
+  } else {
+    const l = ev(nd.left, err, c), r = ev(nd.right, err, c);
+    if (o === '+' || o === '-') {
+      const L = lcm(l.d, r.d);
+      if (c.max && L > c.max) c.bad = true;
+      v = err === 'den' ? norm(l.n + (o === '+' ? r.n : -r.n), l.d + r.d) : (o === '+' ? add(l, r) : sub(l, r));
+      if (c.steps) {
+        const ea = { n: l.n * L / l.d, d: L }, eb = { n: r.n * L / r.d, d: L };
+        const raw = { n: ea.n + (o === '+' ? eb.n : -eb.n), d: L };
+        c.steps.push(`${fw(l)} ${SYM[o]} ${fw(r)}: kgV(${l.d}, ${r.d}) = ${L} → ${fh(ea)} ${SYM[o]} ${fw(eb)} = ${fh(raw)}${raw.d !== v.d ? ' = ' + fh(v) : ''}${o === '-' && r.n < 0 ? ' (minus minus = plus)' : ''}`);
+        c.hints.push(`kgV(${l.d}, ${r.d}) = ${L}`);
+      }
+    } else if (o === '*') {
+      v = mul(l, r);
+      if (c.steps) {
+        const raw = { n: l.n * r.n, d: l.d * r.d };
+        c.steps.push(`${fw(l)} · ${fw(r)} = ${fh(raw)}${raw.d !== v.d ? ' = ' + fh(v) : ''}`);
+        c.hints.push('Multiplikation: Zähler mal Zähler, Nenner mal Nenner (vorher kürzen)');
+      }
+    } else {
+      v = err === 'recip' ? mul(l, r) : div(l, r);
+      if (c.steps) {
+        const rec = r.n < 0 ? { n: -r.d, d: -r.n } : { n: r.d, d: r.n };
+        c.steps.push(`${fw(l)} : ${fw(r)} = ${fw(l)} · ${fw(rec)} = ${fh(v)}`);
+        c.hints.push('Division: mit dem Kehrwert des zweiten Bruchs multiplizieren');
+      }
+    }
+  }
+  if (nd.negParen && err !== 'neg') {
+    const w = { n: -v.n, d: v.d };
+    if (c.steps) { c.steps.push(`Minus vor der Klammer: −(${fh(v)}) = ${fh(w)}`); c.hints.push('Minus vor der Klammer kehrt das Vorzeichen um'); }
+    v = w;
+  }
+  if (c.max && (ab(v.n) > 150 || v.d > 72)) c.bad = true;
+  return v;
+}
+const parse = items => {
+  const a = items.slice();
+  for (const set of [['*', ':'], ['+', '-']]) {
+    for (let i = 1; i < a.length;) {
+      if (set.includes(a[i])) a.splice(i - 1, 3, { type: 'op', op: a[i], left: a[i - 1], right: a[i + 1] });
+      else i += 2;
+    }
+  }
+  return a[0];
+};
+
+/* ---------- Generator ---------- */
+function makeLeaf(level, dmax, neg, mixed, kopf) {
+  const d = 2 + rnd(dmax - 1);
+  let n, mix = null, f;
+  do { n = 1 + rnd(kopf ? Math.min(d + 1, 5) : d + Math.floor(d / 2)); } while (gcd(n, d) !== 1 || n === d);
+  f = { n, d };
+  if (mixed && level >= 3 && Math.random() < 0.3) {
+    do { n = 1 + rnd(d - 1); } while (gcd(n, d) !== 1);
+    const w = 1 + rnd(2);
+    mix = { w, n, d }; f = { n: w * d + n, d };
+  }
+  if (neg) f = { n: -f.n, d: f.d };
+  return { type: 'frac', frac: f, mix, mixed: !!mix, negSign: neg };
+}
+
+function gen(level, o) {
+  for (let t = 0; ; t++) {
+    const lv = t > 4000 ? 1 : level, cfg = LV[lv];
+    const k = cfg.k || (Math.random() < 0.5 ? 3 : 4);
+    const dmax = o.kopf ? Math.min(cfg.d, 6) : cfg.d, maxL = o.kopf ? Math.min(cfg.l, 18) : cfg.l;
+    // Vorzeichen
+    const negs = Array(k).fill(false);
+    if (o.neg && lv >= 2) {
+      if (lv === 2) { if (Math.random() < 0.6) negs[rnd(k)] = true; }
+      else for (let i = 0; i < k; i++) negs[i] = Math.random() < 0.3;
+    }
+    const leaves = negs.map(n => makeLeaf(lv, dmax, n, o.mixed, o.kopf));
+    // Operatoren
+    const pm = () => pick(['+', '-']), md = () => pick(['*', ':']);
+    const ops = Array.from({ length: k - 1 }, () => Math.random() < (lv <= 2 ? 0.35 : 0.45) ? md() : pm());
+    // Klammern
+    let groups = [];
+    const two = lv >= 5 && !o.kopf && k === 4 && Math.random() < 0.4;
+    if (two) { groups = [[0, 1], [2, 3]]; ops[0] = pm(); ops[1] = md(); ops[2] = pm(); }
+    else if (lv >= 5 && !o.kopf || Math.random() < (lv <= 2 ? 0.5 : 0.7)) {
+      const size = (k === 4 && lv >= 4 && !o.kopf && Math.random() < 0.4) ? 3 : 2;
+      const s = rnd(k - size + 1);
+      groups = [[s, s + size - 1]];
+      if (!ops.slice(s, s + size - 1).some(x => '+-'.includes(x))) ops[s] = pm();
+      if (lv >= 3 && s > 0 && Math.random() < 0.5) ops[s - 1] = '-';
+    }
+    if (!ops.some(x => '+-'.includes(x))) ops[0] = pm();
+    if (lv >= 5 && !ops.some(x => '*:'.includes(x))) continue;
+    // Baum
+    const items = [];
+    leaves.forEach((l, i) => { items.push(l); if (i < k - 1) items.push(ops[i]); });
+    [...groups].sort((a, b) => b[0] - a[0]).forEach(([s, e]) => {
+      const nd = parse(items.slice(2 * s, 2 * e + 1));
+      nd.paren = true;
+      if (s === 0 && o.neg && lv >= 3 && Math.random() < 0.4) nd.negParen = true;
+      items.splice(2 * s, 2 * (e - s) + 1, nd);
+    });
+    const ast = parse(items);
+    const c = { max: maxL, bad: false, steps: [], hints: [] };
+    let correct;
+    try { correct = ev(ast, null, c); } catch (e) { continue; }
+    if (c.bad || correct.n === 0 || ab(correct.n / correct.d) > 12) continue;
+    // Schrittliste
+    const pre = leaves.filter(l => l.mix).map(l => `${mixH(l)} = ${fh(l.frac)}`);
+    return { level: lv, fractionCount: k, maxLcm: maxL, ast, correct, leaves,
+      steps: [...pre, ...c.steps, `Ergebnis (gekürzt): ${dispH(correct)}`],
+      hints: c.hints, hasParen: groups.length };
+  }
+}
+
+/* ---------- Optionen & Fehlerdiagnose ---------- */
+const TRAPS = {
+  den: 'Nenner werden nicht addiert! Erst auf den Hauptnenner (kgV) erweitern, dann nur die Zähler addieren oder subtrahieren.',
+  recip: 'Beim Dividieren musst du mit dem Kehrwert des zweiten Bruchs multiplizieren.',
+  neg: 'Minus vor der Klammer kehrt alle Vorzeichen in der Klammer um.',
+  mixed: 'Gemischte Zahl umwandeln: Ganze · Nenner + Zähler, nicht Ganze + Zähler.',
+  unreduced: 'Der Wert stimmt, aber das Ergebnis ist nicht vollständig gekürzt.',
+  sign: 'Vorzeichen prüfen: minus · plus = minus, minus · minus = plus.',
+  near: 'Rechenfehler beim Erweitern oder Zusammenfassen – rechne die Schritte noch einmal nach.'
+};
+function makeOptions(q) {
+  const key = f => f.n + '/' + f.d, isRaw = f => gcd(f.n, f.d) !== 1;
+  const cands = [];
+  shuffle(['den', 'recip', 'neg', 'mixed', 'unreduced', 'sign']).forEach(k => {
+    let f;
+    if (k === 'unreduced') { const m = pick([2, 3]); if (q.correct.d * m > 99) return; f = { n: q.correct.n * m, d: q.correct.d * m }; }
+    else if (k === 'sign') f = { n: -q.correct.n, d: q.correct.d };
+    else { try { f = ev(q.ast, k, {}); } catch (e) { return; } }
+    cands.push({ frac: f, trapKey: k, trapMsg: TRAPS[k] });
+  });
+  const opts = [{ frac: q.correct, ok: true }];
+  for (const cd of cands) {
+    if (opts.length >= 4) break;
+    if (cd.frac.d <= 0 || opts.some(o => key(o.frac) === key(cd.frac))) continue;
+    if (!isRaw(cd.frac) && opts.some(o => eq(o.frac, cd.frac))) continue;
+    opts.push(cd);
+  }
+  for (let g = 1; opts.length < 4; g++) {
+    const f = norm(q.correct.n + pick([-1, 1]) * g, q.correct.d);
+    if (!opts.some(o => eq(o.frac, f))) opts.push({ frac: f, trapKey: 'near', trapMsg: TRAPS.near });
+  }
+  opts.forEach(o => { o.html = dispH(o.frac); });
+  return shuffle(opts);
+}  const taken = f => opts.some(o => key(o.frac) === key(f) || (!o.trapIsRaw && !isRaw(f) && eq(o.frac, f)));
+  const isRaw = f => gcd(f.n, f.d) !== 1;
+  const key = f => f.n + '/' + f.d;
+  for (const cd of cands) {
+    if (opts.length >= 4) break;
+    if (cd.frac.d <= 0 || opts.some(o => key(o.frac) === key(cd.frac))) continue;
+    if (!isRaw(cd.frac) && opts.some(o => eq(o.frac, cd.frac))) continue;
+    opts.push(cd);
+  }
+  let g = 1;
+  while (opts.length < 4) {
+    const f = norm(q.correct.n + pick([-1, 1]) * g, q.correct.d);
+    if (!opts.some(o => eq(o.frac, f))) opts.push({ frac: f, trapKey: 'near', trapMsg: TRAPS.near });
+    g++;
+  }
+  opts.forEach(o => { o.html = dispH(o.frac); });
+  return shuffle(opts);
+}
+
+/* ---------- App-Zustand ---------- */
+const S = { level: 1, streak: 0, run: 0, points: 0, ok: 0, total: 0, q: null, done: false, hintUsed: false, neg: true, mixed: true, kopf: false };
+const tb = document.querySelector('app-mode-toolbar');
+const isManual = () => /manu/i.test(String((tb && (tb.mode || tb.getAttribute('mode'))) || ''));
+const thr = () => Math.max(3, Math.min(7, +((tb && (tb.threshold || tb.getAttribute('threshold'))) || 5)));
+
+function drawLevels() {
+  $('lv').hidden = !isManual();
+  $('lv').innerHTML = [1, 2, 3, 4, 5, 6].map(n => `<button type="button" class="chip chip--left${n === S.level ? ' is-active' : ''}" data-lv="${n}">Stufe ${n}</button>`).join('');
+}
+function stats() {
+  $('sP').textContent = S.points; $('sS').textContent = S.streak; $('sL').textContent = S.level; $('sR').textContent = S.ok + '/' + S.total;
+}
+function newQ() {
+  keepScroll(() => keepFocus(() => {
+    S.neg = $('cNeg').checked; S.mixed = $('cMix').checked; S.kopf = $('cKopf').checked;
+    const q = gen(S.level, S); q.options = makeOptions(q);
+    S.q = q; S.done = false; S.hintUsed = false;
+    $('info').textContent = `Stufe ${q.level} · ${q.fractionCount} Brüche · kgV ≤ ${q.maxLcm}${S.kopf ? ' · Kopfrechnen' : ''}`;
+    $('prompt').innerHTML = 'Berechne und kürze vollständig.';
+    $('term').innerHTML = R(q.ast, true) + ' = ?';
+    $('opts').innerHTML = q.options.map((o, i) => `<button type="button" class="option" data-i="${i}"><span class="k">${i + 1}</span>${o.html}</button>`).join('');
+    $('fb').innerHTML = ''; $('hint').hidden = true; $('next').disabled = true;
+    drawLevels(); stats();
+  }));
+}
+const stepsHtml = q => `<ol class="steps">${q.steps.map(s => `<li>${s}</li>`).join('')}</ol>`;
+
+function answer(i) {
+  if (S.done || !S.q) return;
+  const q = S.q, o = q.options[i]; S.done = true; S.total++;
+  const ok = !!o.ok;
+  keepScroll(() => {
+    [...$('opts').children].forEach((b, j) => { b.disabled = true; if (q.options[j].ok) b.classList.add('is-ok'); else if (j === i) b.classList.add('is-bad'); });
+    let note = '';
+    if (ok) {
+      S.ok++; S.streak++; S.run++; S.points += 10 + Math.min(S.streak, 5) - (S.hintUsed ? 5 : 0);
+      if (!isManual() && S.run >= thr() && S.level < 6) { S.level++; S.run = 0; note = `<p><b>Stufe ${S.level} erreicht!</b></p>`; }
+      $('fb').innerHTML = `<div class="feedback feedback--ok"><b>Richtig!</b> ${q.hasParen ? 'Klammern zuerst, dann Punkt vor Strich.' : 'Punkt vor Strich.'}${note}<details><summary>Rechenschritte</summary>${stepsHtml(q)}</details></div>`;
+    } else {
+      S.streak = 0; S.run = 0;
+      $('fb').innerHTML = `<div class="feedback feedback--bad"><b>Nicht ganz.</b> ${o.trapMsg}<br>Richtig ist ${q.options.find(x => x.ok).html}.${stepsHtml(q)}</div>`;
+    }
+    $('next').disabled = false; stats();
+  });
+}
+
+/* ---------- Events ---------- */
+$('opts').addEventListener('click', e => { const b = e.target.closest('.option'); if (b) answer(+b.dataset.i); });
+$('next').addEventListener('click', () => { if (S.done) newQ(); });
+$('hintBtn').addEventListener('click', () => {
+  if (!S.q) return; S.hintUsed = true;
+  const h = $('hint'); h.hidden = false;
+  h.innerHTML = '<b>Hilfe:</b> Klammern zuerst, dann Punkt vor Strich.' + (S.q.hints.length ? `<ol class="steps">${S.q.hints.map(x => `<li>${x}</li>`).join('')}</ol>` : '');
+});
+$('lv').addEventListener('click', e => { const b = e.target.closest('[data-lv]'); if (b) { S.level = +b.dataset.lv; newQ(); } });
+['cNeg', 'cMix', 'cKopf'].forEach(id => $(id).addEventListener('change', e => { e.target.blur(); newQ(); }));
+if (tb) ['change', 'click'].forEach(ev0 => tb.addEventListener(ev0, () => setTimeout(drawLevels, 0)));
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || isControl(e.target)) return;
+  if (/^[1-4]$/.test(e.key)) { e.preventDefault(); answer(+e.key - 1); }
+  else if (e.key === 'Enter') {
+    if (e.target.closest && e.target.closest('button, a')) return; // nativer Klick
+    e.preventDefault();
+    if (S.done) newQ();
+  }
+});
+newQ();
+})();
+</script>
+</body>
+</html>
