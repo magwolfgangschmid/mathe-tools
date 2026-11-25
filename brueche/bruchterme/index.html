@@ -256,23 +256,6 @@ function makeOptions(q) {
   }
   opts.forEach(o => { o.html = dispH(o.frac); });
   return shuffle(opts);
-}  const taken = f => opts.some(o => key(o.frac) === key(f) || (!o.trapIsRaw && !isRaw(f) && eq(o.frac, f)));
-  const isRaw = f => gcd(f.n, f.d) !== 1;
-  const key = f => f.n + '/' + f.d;
-  for (const cd of cands) {
-    if (opts.length >= 4) break;
-    if (cd.frac.d <= 0 || opts.some(o => key(o.frac) === key(cd.frac))) continue;
-    if (!isRaw(cd.frac) && opts.some(o => eq(o.frac, cd.frac))) continue;
-    opts.push(cd);
-  }
-  let g = 1;
-  while (opts.length < 4) {
-    const f = norm(q.correct.n + pick([-1, 1]) * g, q.correct.d);
-    if (!opts.some(o => eq(o.frac, f))) opts.push({ frac: f, trapKey: 'near', trapMsg: TRAPS.near });
-    g++;
-  }
-  opts.forEach(o => { o.html = dispH(o.frac); });
-  return shuffle(opts);
 }
 
 /* ---------- App-Zustand ---------- */
@@ -342,6 +325,7 @@ document.addEventListener('keydown', e => {
     if (S.done) newQ();
   }
 });
+
 newQ();
 })();
 </script>
